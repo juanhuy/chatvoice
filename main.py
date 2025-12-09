@@ -1,0 +1,111 @@
+# main.py
+import customtkinter as ctk
+import threading
+from tkinter import messagebox
+from modules.network import NetworkClient
+from modules.audio import AudioManager
+from ui.login_window import LoginWindow
+from ui.chat_window import ChatWindow
+
+ctk.set_appearance_mode("System")
+ctk.set_default_color_theme("blue")
+
+class MainApp(ctk.CTk):
+    def __init__(self):
+        super().__init__()
+        self.withdraw() # Ẩn cửa sổ chính
+        self.title("Lan Voice Chat")
+        self.geometry("1000x650") 
+
+        # Init Modules
+        self.network = NetworkClient()
+        self.audio = AudioManager()
+        
+        # Show Login
+        self.login_win = LoginWindow(self)
+        self.chat_ui = None
+
+    def connect_server(self, ip, user, pwd):
+        result = self.network.connect(ip, user, pwd)
+        print(f"DEBUG: Kết quả từ Server trả về là: '{result}'") 
+
+        if result == "OK":
+            self.login_win.destroy()
+            self.deiconify() # Hiện cửa sổ chính
+            
+            # Khởi tạo giao diện chat
+            self.chat_ui = ChatWindow(self, self.network, self.audio, user)
+            self.chat_ui.pack(fill="both", expand=True) 
+            
+            # Bắt đầu luồng nhận tin nhắn
+            threading.Thread(target=self.network.receive_loop, 
+                             args=(self.on_data_received,), daemon=True).start()
+        else:
+            messagebox.showerror("Đăng nhập thất bại", f"Lỗi từ Server:\n{result}")
+
+    def on_data_received(self, data):
+        # Hàm callback xử lý dữ liệu từ Network gửi về
+        try:
+            if data == b"LOGIN_OK": return
+            
+            # 1. Cập nhật danh sách User online
+            if data.startswith(b"USERLIST::"):
+                try:
+                    users = data.decode().split("::")[1]
+                    self.chat_ui.after(0, lambda: self.chat_ui.update_user_list(users))
+                except: pass
+
+            # 2. Xử lý khi được thêm vào NHÓM (Mới)
+            elif data.startswith(b"GROUP_ADDED::"):
+                group_name = data.decode().split("::")[1]
+                self.chat_ui.after(0, lambda: self.chat_ui.on_group_created(group_name))
+                
+            # 3. Xử lý Tin nhắn văn bản
+            elif data.startswith(b"TEXTMSG::"):
+                parts = data.decode().split("::", 3)
+                if len(parts) == 4:
+                    sender, receiver, msg = parts[1], parts[2], parts[3]
+                    
+                    # Logic xác định Tab hiển thị:
+                    # - Nếu receiver là ALL -> Tab ALL
+                    # - Nếu receiver là tên một nhóm mình đã tham gia -> Tab Nhóm đó
+                    # - Nếu không -> Tab là tên người gửi (Chat riêng)
+                    if receiver == "ALL":
+                        target_tab = "ALL"
+                    elif self.chat_ui and receiver in self.chat_ui.joined_groups:
+                        target_tab = receiver
+                    else:
+                        target_tab = sender
+                        
+                    self.chat_ui.after(0, lambda: self.chat_ui.display_msg(sender, msg, target_tab))
+                
+            # 4. Xử lý Tin nhắn thoại
+            elif data.startswith(b"VOICEMSG::"):
+                parts = data.split(b"::", 3)
+                if len(parts) == 4:
+                    sender, receiver, audio = parts[1].decode(), parts[2].decode(), parts[3]
+                    
+                    if receiver == "ALL": target_tab = "ALL"
+                    elif self.chat_ui and receiver in self.chat_ui.joined_groups: target_tab = receiver
+                    else: target_tab = sender
+                    
+                    self.chat_ui.after(0, lambda: self.chat_ui.display_msg(sender, audio, target_tab, True))
+
+            # 5. Xử lý File
+            elif data.startswith(b"FILE::"):
+                parts = data.split(b"::", 4)
+                if len(parts) == 5:
+                    sender, receiver, fname = parts[1].decode(), parts[2].decode(), parts[3].decode()
+                    
+                    if receiver == "ALL": target_tab = "ALL"
+                    elif self.chat_ui and receiver in self.chat_ui.joined_groups: target_tab = receiver
+                    else: target_tab = sender
+                    
+                    self.chat_ui.after(0, lambda: self.chat_ui.display_msg(sender, f"[Nhận file] {fname}", target_tab))
+
+        except Exception as e:
+            print(f"Error parsing data: {e}")
+
+if __name__ == "__main__":
+    app = MainApp()
+    app.mainloop()

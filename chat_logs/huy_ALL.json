@@ -1,0 +1,68 @@
+[
+    {
+        "time": "18:00 06/12",
+        "sender": "admin",
+        "type": "text",
+        "content": "🎉"
+    },
+    {
+        "time": "18:00 06/12",
+        "sender": "admin",
+        "type": "text",
+        "content": "hello"
+    },
+    {
+        "time": "18:00 06/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "vcl"
+    },
+    {
+        "time": "18:00 06/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "chắn gif vậy"
+    },
+    {
+        "time": "18:02 06/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "s"
+    },
+    {
+        "time": "23:54 06/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "hello"
+    },
+    {
+        "time": "23:54 06/12",
+        "sender": "admin",
+        "type": "text",
+        "content": "chào huy tôi có thể tạo nhóm với bạn"
+    },
+    {
+        "time": "00:01 07/12",
+        "sender": "admin",
+        "type": "text",
+        "content": "oke bạn"
+    },
+    {
+        "time": "18:30 07/12",
+        "sender": "admin",
+        "type": "voice",
+        "content": "[Tin nhắn thoại]"
+    },
+    {
+        "time": "18:37 07/12",
+        "sender": "admin",
+        "type": "text",
+        "content": "[Nhận file] 113d45d8-dcc2-4db4-8217-e470d3aed5a5.jfif"
+    },
+    {
+        "time": "19:00 07/12",
+        "sender": "admin",
+        "type": "voice",
+        "content": "[Tin nhắn thoại]"
+    }
+]
