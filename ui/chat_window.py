@@ -191,10 +191,15 @@ class ChatWindow(ctk.CTkFrame):
     def display_msg(self, sender, text, to_tab, is_voice=False, save=True):
         """Hiển thị tin nhắn lên màn hình"""
         
-        # Xác định Tab cần hiện
-        if to_tab == "ALL": target_view = "ALL"
-        elif to_tab in self.joined_groups: target_view = to_tab 
-        else: target_view = sender if sender != self.username else to_tab 
+        # Xác định Tab cần hiện - Phải xử lý cả tin nhắn riêng
+        if to_tab == "ALL": 
+            target_view = "ALL"
+        elif to_tab in self.joined_groups: 
+            target_view = to_tab 
+        elif to_tab == self.username:  # Tin riêng cho mình từ người khác
+            target_view = sender
+        else:  # Tin riêng từ mình gửi cho người khác
+            target_view = to_tab
 
         # --- LƯU LOG (Chỉ lưu khi save=True) ---
         if save:
@@ -246,7 +251,7 @@ class ChatWindow(ctk.CTkFrame):
             frame = ctk.CTkFrame(self.chat_scroll, fg_color="transparent")
             self.frames_store[target] = frame
             
-            # --- LOAD LỊCH SỬ NGAY KHI TẠO FRAME MỚI ---
+            # --- LOAD LỊCH SỬ CHỈ KHI LẦN ĐẦU TẠO FRAME ---
             self.load_history(target) 
             # -------------------------------------------
             
@@ -335,6 +340,7 @@ class ChatWindow(ctk.CTkFrame):
                 btn.configure(fg_color="#393c43" if is_active else "transparent")
         for name, frame in self.frames_store.items():
             frame.pack_forget()
+        # Đảm bảo load history tại thời điểm này
         frame = self._get_chat_frame(target)
         frame.pack(fill="both", expand=True)
 
@@ -377,8 +383,11 @@ class ChatWindow(ctk.CTkFrame):
             if u and u != self.username:
                 btn = self.create_channel_btn(f"👤 {u}", u)
                 btn.pack(fill="x", pady=1)
-                # Tự động load history của user này (nếu có)
-                self._get_chat_frame(u) 
+                # Tự động tạo frame để chuẩn bị (sẽ load history khi switch_chat)
+                # Không gọi _get_chat_frame() ở đây để tránh load history quá sớm
+                if u not in self.frames_store:
+                    frame = ctk.CTkFrame(self.chat_scroll, fg_color="transparent")
+                    self.frames_store[u] = frame 
 
     def on_group_created(self, group_name):
         self.add_group_to_list(group_name)
