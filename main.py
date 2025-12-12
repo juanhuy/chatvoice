@@ -69,13 +69,15 @@ class MainApp(ctk.CTk):
                     # Logic xác định Tab hiển thị:
                     # - Nếu receiver là ALL -> Tab ALL
                     # - Nếu receiver là tên một nhóm mình đã tham gia -> Tab Nhóm đó
-                    # - Nếu không -> Tab là tên người gửi (Chat riêng)
+                    # - Nếu receiver là mình (tin riêng cho mình) -> Tab là tên người gửi
                     if receiver == "ALL":
                         target_tab = "ALL"
                     elif self.chat_ui and receiver in self.chat_ui.joined_groups:
                         target_tab = receiver
-                    else:
+                    elif receiver == self.chat_ui.username:  # Tin nhắn riêng cho mình
                         target_tab = sender
+                    else:
+                        target_tab = receiver  # Chat riêng với người khác
                         
                     self.chat_ui.after(0, lambda: self.chat_ui.display_msg(sender, msg, target_tab))
                 
@@ -85,9 +87,14 @@ class MainApp(ctk.CTk):
                 if len(parts) == 4:
                     sender, receiver, audio = parts[1].decode(), parts[2].decode(), parts[3]
                     
-                    if receiver == "ALL": target_tab = "ALL"
-                    elif self.chat_ui and receiver in self.chat_ui.joined_groups: target_tab = receiver
-                    else: target_tab = sender
+                    if receiver == "ALL":
+                        target_tab = "ALL"
+                    elif self.chat_ui and receiver in self.chat_ui.joined_groups:
+                        target_tab = receiver
+                    elif receiver == self.chat_ui.username:  # Voice riêng cho mình
+                        target_tab = sender
+                    else:
+                        target_tab = receiver  # Voice riêng với người khác
                     
                     self.chat_ui.after(0, lambda: self.chat_ui.display_msg(sender, audio, target_tab, True))
 
@@ -99,7 +106,8 @@ class MainApp(ctk.CTk):
                     
                     if receiver == "ALL": target_tab = "ALL"
                     elif self.chat_ui and receiver in self.chat_ui.joined_groups: target_tab = receiver
-                    else: target_tab = sender
+                    elif receiver == self.chat_ui.username: target_tab = sender
+                    else: target_tab = receiver
                     
                     self.chat_ui.after(0, lambda: self.chat_ui.display_msg(sender, f"[Nhận file] {fname}", target_tab))
 
