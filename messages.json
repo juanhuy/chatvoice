@@ -1,0 +1,14 @@
+[
+    {
+        "type": "CALL_REQUEST",
+        "sender": "chi",
+        "receiver": "nhóm bài tập",
+        "data": ""
+    },
+    {
+        "type": "CALL_END",
+        "sender": "chi",
+        "receiver": "nhóm bài tập",
+        "data": ""
+    }
+]

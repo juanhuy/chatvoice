@@ -19,6 +19,9 @@ ALLOWED_USERS = {
 clients = {} # {username: socket}
 groups = {}  # {group_name: [member1, member2, ...]}
 GROUPS_FILE = "groups.json" # File lưu danh sách nhóm
+# File lưu tin nhắn
+MESSAGES_FILE = "messages.json"
+messages = []  # danh sách tin nhắn đã lưu {type, sender, receiver, data}
 lock = threading.Lock()
 
 # --- HÀM XỬ LÝ FILE NHÓM ---
@@ -39,6 +42,25 @@ def save_groups():
             json.dump(groups, f, ensure_ascii=False, indent=4)
     except Exception as e:
         print(f"[!] Lỗi lưu nhóm: {e}")
+# ---LOAD / SAVE MESSAGES---
+def load_messages():
+    global messages
+    if not os.path.exists(MESSAGES_FILE):
+        messages = []
+        return
+    try:
+        with open(MESSAGES_FILE, "r", encoding="utf-8") as f:
+            messages = json.load(f)
+            print(f"[*] Đã tải {len(messages)} tin nhắn.")
+    except:
+        messages = []
+
+def save_messages():
+    try:
+        with open(MESSAGES_FILE, "w", encoding="utf-8") as f:
+            json.dump(messages, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        print("[!] Lỗi lưu tin nhắn:", e)
 
 # --- XỬ LÝ MẠNG ---
 def send_msg(sock, data):
@@ -103,9 +125,23 @@ def handle_client(conn, addr):
                                     payload = f"GROUP_ADDED::{grp_name}".encode('utf-8')
                                     send_msg(conn, payload)
                         # ------------------------------------------------
+                        # ---- GỬI TIN NHẮN CŨ CHO USER (OFFLINE MSG) ----
+                        with lock:
+                            for msg in messages:
+                                recv = msg["receiver"]
+
+                                if recv == "ALL" or recv == username or (recv in groups and username in groups.get(recv, [])):
+                                    
+                                    # reconstruct message protocol
+                                    reconstructed = (
+                                        f"{msg['type']}::{msg['sender']}::{msg['receiver']}::".encode() +
+                                        msg["data"].encode("latin1")
+                                    )
+                                    send_msg(conn, reconstructed) 
+
                 else:
                     send_msg(conn, b"LOGIN_FAIL::Sai mat khau")
-
+ 
             # --- XỬ LÝ TẠO NHÓM ---
             elif msg_type == "GROUP_CREATE":
                 group_name = parts[1].decode()
@@ -129,7 +165,18 @@ def handle_client(conn, addr):
                 if not username: continue
                 sender = parts[1].decode()
                 receiver = parts[2].decode()
-                
+                payload = parts[3] if len(parts) > 3 else b""
+
+                # --- LƯU TIN NHẮN ---
+                with lock:
+                    messages.append({
+                        "type": msg_type,
+                        "sender": sender,
+                        "receiver": receiver,
+                        "data": payload.decode("latin1")   # tránh lỗi nhị phân
+                    })
+                    save_messages()
+
                 if receiver == "ALL":
                     with lock:
                         for u, s in clients.items():
