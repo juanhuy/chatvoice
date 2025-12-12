@@ -9,7 +9,10 @@ from config import HOST, PORT, HEADER_SIZE
 ALLOWED_USERS = {
     "admin": "123456",
     "huy": "123456",
-    "nam": "123456"
+    "phuoc": "123456",
+    "khanh": "123456",
+    "phu": "123456",
+    "chi": "123456",
 }
 
 # --- LƯU TRỮ ---
