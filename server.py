@@ -124,8 +124,8 @@ def handle_client(conn, addr):
                         if mem in clients:
                             send_msg(clients[mem], notify_payload)
 
-            # --- XỬ LÝ TIN NHẮN ---
-            elif msg_type in ["TEXTMSG", "VOICEMSG", "FILE"]:
+            # --- XỬ LÝ TIN NHẮN & CUỘC GỌI ---
+            elif msg_type in ["TEXTMSG", "VOICEMSG", "FILE", "CALL_REQUEST", "CALL_ACCEPT", "CALL_REJECT", "CALL_END", "AUDIO_STREAM"]:
                 if not username: continue
                 sender = parts[1].decode()
                 receiver = parts[2].decode()

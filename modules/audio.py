@@ -58,3 +58,50 @@ class AudioManager:
             sd.wait()
         except Exception as e:
             print(f"Lỗi phát loa: {e}")
+
+    # --- STREAMING METHODS FOR CALL ---
+    def start_streaming(self, callback):
+        """Bắt đầu stream mic cho cuộc gọi"""
+        self.stream_callback = callback
+        self.is_streaming = True
+        self.input_stream = sd.InputStream(
+            samplerate=SAMPLE_RATE, 
+            channels=CHANNELS, 
+            dtype=np.int16, 
+            blocksize=CHUNK, 
+            callback=self._stream_input_callback
+        )
+        self.input_stream.start()
+
+    def _stream_input_callback(self, indata, frames, time, status):
+        if status: print(f"Stream status: {status}")
+        if self.is_streaming and self.stream_callback:
+            self.stream_callback(indata.tobytes())
+
+    def stop_streaming(self):
+        """Dừng stream mic"""
+        self.is_streaming = False
+        if hasattr(self, 'input_stream'):
+            self.input_stream.stop()
+            self.input_stream.close()
+        if hasattr(self, 'output_stream'):
+            self.output_stream.stop()
+            self.output_stream.close()
+            del self.output_stream
+
+    def play_stream_chunk(self, data_bytes):
+        """Phát 1 chunk âm thanh nhận được"""
+        if not hasattr(self, 'output_stream'):
+            self.output_stream = sd.OutputStream(
+                samplerate=SAMPLE_RATE, 
+                channels=CHANNELS, 
+                dtype=np.int16, 
+                blocksize=CHUNK
+            )
+            self.output_stream.start()
+        
+        try:
+            data_np = np.frombuffer(data_bytes, dtype=np.int16)
+            self.output_stream.write(data_np)
+        except Exception as e:
+            print(f"Lỗi phát stream: {e}")

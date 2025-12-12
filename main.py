@@ -111,6 +111,25 @@ class MainApp(ctk.CTk):
                     
                     self.chat_ui.after(0, lambda: self.chat_ui.display_msg(sender, f"[Nhận file] {fname}", target_tab))
 
+            # 6. Xử lý Call Request
+            elif data.startswith(b"CALL_REQUEST::"):
+                sender = data.decode().split("::")[1]
+                self.chat_ui.after(0, lambda: self.chat_ui.handle_call_request(sender))
+
+            # 7. Xử lý Call Response (Accept/Reject/End)
+            elif any(data.startswith(prefix) for prefix in [b"CALL_ACCEPT::", b"CALL_REJECT::", b"CALL_END::"]):
+                parts = data.decode().split("::")
+                msg_type = parts[0]
+                sender = parts[1]
+                self.chat_ui.after(0, lambda: self.chat_ui.handle_call_response(msg_type, sender))
+
+            # 8. Xử lý Audio Stream
+            elif data.startswith(b"AUDIO_STREAM::"):
+                parts = data.split(b"::", 3)
+                if len(parts) == 4:
+                    audio_data = parts[3]
+                    self.audio.play_stream_chunk(audio_data)
+
         except Exception as e:
             print(f"Error parsing data: {e}")
 

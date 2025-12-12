@@ -29,6 +29,8 @@ class ChatWindow(ctk.CTkFrame):
         self.frames_store = {}
         self.online_users = [] 
         self.joined_groups = [] 
+        self.is_calling = False
+        self.call_target = None
 
         # Tạo thư mục lưu log nếu chưa có
         if not os.path.exists("chat_logs"):
@@ -107,6 +109,12 @@ class ChatWindow(ctk.CTkFrame):
         self.lbl_header_title = ctk.CTkLabel(self.chat_header, text="📢 Kênh chung", 
                                              font=("gg sans", 16, "bold"), text_color="white", anchor="w")
         self.lbl_header_title.pack(side="left", padx=20, pady=15)
+
+        # Nút Call
+        self.btn_call = ctk.CTkButton(self.chat_header, text="📞 Call", width=60, fg_color=GREEN_COLOR, 
+                                      hover_color=HOVER_COLOR, command=self.start_call)
+        self.btn_call.pack(side="right", padx=20, pady=10)
+
         ctk.CTkFrame(self.main_area, height=1, fg_color="#202225").grid(row=0, column=0, sticky="ews")
 
         # Chat Log
@@ -139,6 +147,82 @@ class ChatWindow(ctk.CTkFrame):
 
         # Tự động tạo frame ALL và load lịch sử
         self._get_chat_frame("ALL")
+
+    # --- CALL FEATURE ---
+    def start_call(self):
+        """Bắt đầu cuộc gọi"""
+        target = self.current_receiver
+        if target == "ALL":
+            messagebox.showwarning("Call", "Không thể gọi cho kênh chung!")
+            return
+        
+        self.is_calling = True
+        self.btn_call.configure(text="📞 End", fg_color=RED_COLOR, command=self.end_call)
+        
+        # Gửi yêu cầu gọi
+        payload = f"CALL_REQUEST::{self.username}::{target}".encode('utf-8')
+        self.network.send(payload)
+        print(f"Đang gọi cho {target}...")
+
+    def end_call(self, notify=True):
+        """Kết thúc cuộc gọi"""
+        target = self.call_target if self.call_target else self.current_receiver
+        self.is_calling = False
+        self.call_target = None
+        self.audio.stop_streaming()
+        
+        self.btn_call.configure(text="📞 Call", fg_color=GREEN_COLOR, command=self.start_call)
+        
+        if notify and target:
+            # Gửi lệnh kết thúc
+            payload = f"CALL_END::{self.username}::{target}".encode('utf-8')
+            self.network.send(payload)
+        print("Đã kết thúc cuộc gọi.")
+
+    def handle_call_request(self, sender):
+        """Xử lý khi có người gọi đến"""
+        ans = messagebox.askyesno("Cuộc gọi đến", f"{sender} đang gọi cho bạn. Chấp nhận?")
+        if ans:
+            self.is_calling = True
+            # Gửi chấp nhận
+            payload = f"CALL_ACCEPT::{self.username}::{sender}".encode('utf-8')
+            self.network.send(payload)
+            
+            # Bắt đầu stream
+            self.start_streaming_audio(sender)
+            
+            # Đổi trạng thái nút Call (nếu đang ở tab người đó)
+            if self.current_receiver == sender:
+                self.btn_call.configure(text="📞 End", fg_color=RED_COLOR, command=self.end_call)
+        else:
+            # Gửi từ chối
+            payload = f"CALL_REJECT::{self.username}::{sender}".encode('utf-8')
+            self.network.send(payload)
+
+    def handle_call_response(self, response_type, sender):
+        """Xử lý phản hồi cuộc gọi (Accept/Reject/End)"""
+        if response_type == "CALL_ACCEPT":
+            messagebox.showinfo("Call", f"{sender} đã chấp nhận cuộc gọi!")
+            self.start_streaming_audio(sender)
+            
+        elif response_type == "CALL_REJECT":
+            self.end_call(notify=False) # Reset UI
+            messagebox.showinfo("Call", f"{sender} đã từ chối cuộc gọi.")
+            
+        elif response_type == "CALL_END":
+            self.end_call(notify=False) # Reset UI
+            messagebox.showinfo("Call", f"Cuộc gọi với {sender} đã kết thúc.")
+
+    def start_streaming_audio(self, target):
+        """Bắt đầu gửi âm thanh"""
+        self.call_target = target
+        self.audio.start_streaming(self.send_audio_chunk)
+
+    def send_audio_chunk(self, audio_bytes):
+        """Gửi 1 chunk âm thanh đi"""
+        header_part = f"AUDIO_STREAM::{self.username}::{self.call_target}::".encode('utf-8')
+        payload = header_part + audio_bytes
+        self.network.send(payload)
 
     # --- TÍNH NĂNG 1: LƯU VÀ TẢI LỊCH SỬ CHAT (MỚI) ---
     def save_log(self, receiver, sender, content, msg_type="text"):
@@ -333,6 +417,13 @@ class ChatWindow(ctk.CTkFrame):
         else: icon = "@"
         self.lbl_header_title.configure(text=f"{icon} {target}")
         self.msg_entry.configure(placeholder_text=f"Gửi đến {target}")
+        
+        # Cập nhật trạng thái nút Call
+        if self.is_calling and self.call_target == target:
+            self.btn_call.configure(text="📞 End", fg_color=RED_COLOR, command=self.end_call)
+        else:
+            self.btn_call.configure(text="📞 Call", fg_color=GREEN_COLOR, command=self.start_call)
+
         self.btn_general.configure(fg_color="#393c43" if target == "ALL" else "transparent")
         for container in [self.group_container, self.dm_container]:
             for btn in container.winfo_children():
