@@ -797,12 +797,7 @@ class ChatWindow(ctk.CTkFrame):
         for u in self.online_users:
             if u and u != self.username:
                 btn = self.create_channel_btn(f"👤 {u}", u)
-                btn.pack(fill="x", pady=1)
-                # Tự động tạo frame để chuẩn bị (sẽ load history khi switch_chat)
-                # Không gọi _get_chat_frame() ở đây để tránh load history quá sớm
-                if u not in self.frames_store:
-                    frame = ctk.CTkFrame(self.chat_scroll, fg_color="transparent")
-                    self.frames_store[u] = frame 
+                btn.pack(fill="x", pady=1) 
 
     def on_group_created(self, group_name):
         self.add_group_to_list(group_name)
