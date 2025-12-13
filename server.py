@@ -3,6 +3,8 @@ import socket
 import threading
 import json
 import os
+import time
+import uuid
 from config import HOST, PORT, HEADER_SIZE
 
 # --- CẤU HÌNH ---
@@ -18,10 +20,8 @@ ALLOWED_USERS = {
 # --- LƯU TRỮ ---
 clients = {} # {username: socket}
 groups = {}  # {group_name: [member1, member2, ...]}
+offline_messages = {}     # {username: [msg_obj]}
 GROUPS_FILE = "groups.json" # File lưu danh sách nhóm
-# File lưu tin nhắn
-MESSAGES_FILE = "messages.json"
-messages = []  # danh sách tin nhắn đã lưu {type, sender, receiver, data}
 lock = threading.Lock()
 
 # --- HÀM XỬ LÝ FILE NHÓM ---
@@ -42,25 +42,6 @@ def save_groups():
             json.dump(groups, f, ensure_ascii=False, indent=4)
     except Exception as e:
         print(f"[!] Lỗi lưu nhóm: {e}")
-# ---LOAD / SAVE MESSAGES---
-def load_messages():
-    global messages
-    if not os.path.exists(MESSAGES_FILE):
-        messages = []
-        return
-    try:
-        with open(MESSAGES_FILE, "r", encoding="utf-8") as f:
-            messages = json.load(f)
-            print(f"[*] Đã tải {len(messages)} tin nhắn.")
-    except:
-        messages = []
-
-def save_messages():
-    try:
-        with open(MESSAGES_FILE, "w", encoding="utf-8") as f:
-            json.dump(messages, f, ensure_ascii=False, indent=4)
-    except Exception as e:
-        print("[!] Lỗi lưu tin nhắn:", e)
 
 # --- XỬ LÝ MẠNG ---
 def send_msg(sock, data):
@@ -127,21 +108,36 @@ def handle_client(conn, addr):
                         # ------------------------------------------------
                         # ---- GỬI TIN NHẮN CŨ CHO USER (OFFLINE MSG) ----
                         with lock:
-                            for msg in messages:
-                                recv = msg["receiver"]
-
-                                if recv == "ALL" or recv == username or (recv in groups and username in groups.get(recv, [])):
-                                    
-                                    # reconstruct message protocol
-                                    reconstructed = (
-                                        f"{msg['type']}::{msg['sender']}::{msg['receiver']}::".encode() +
-                                        msg["data"].encode("latin1")
+                            if username in offline_messages:
+                                for msg in offline_messages[username]:
+                                    if msg.get("delivered"): 
+                                        continue
+                                    payload = (
+                                        f"{msg['type']}::{msg['id']}::{msg['sender']}::{msg['receiver']}::"
+                                        .encode() + msg["data"].encode("latin1")
                                     )
-                                    send_msg(conn, reconstructed) 
+                                    send_msg(conn, payload)
+                                    
 
                 else:
                     send_msg(conn, b"LOGIN_FAIL::Sai mat khau")
- 
+                 # ---------- ACK ----------
+            elif msg_type == "ACK":
+                msg_id = parts[1].decode()
+
+                if not username:
+                    continue
+
+                with lock:
+                    msgs = offline_messages.get(username, [])
+                    for m in msgs:
+                        if m["id"] == msg_id:
+                            msgs.remove(m)
+                            break
+                    if not msgs and username in offline_messages:
+                        del offline_messages[username]
+
+
             # --- XỬ LÝ TẠO NHÓM ---
             elif msg_type == "GROUP_CREATE":
                 group_name = parts[1].decode()
@@ -168,31 +164,57 @@ def handle_client(conn, addr):
                 payload = parts[3] if len(parts) > 3 else b""
 
                 # --- LƯU TIN NHẮN ---
-                with lock:
-                    messages.append({
-                        "type": msg_type,
-                        "sender": sender,
-                        "receiver": receiver,
-                        "data": payload.decode("latin1")   # tránh lỗi nhị phân
-                    })
-                    save_messages()
+                if sender != username:
+                    continue
+
+                msg_obj = {
+                    "id": str(uuid.uuid4()),
+                    "type": msg_type,
+                    "sender": sender,
+                    "receiver": receiver,
+                    "data": payload.decode("latin1"),
+                    "time": int(time.time()),
+                    "delivered": False
+                }
+
+
+                send_payload = (
+                    f"{msg_type}::{msg_obj['id']}::{sender}::{receiver}::"
+                    .encode() + payload
+                )
 
                 if receiver == "ALL":
                     with lock:
-                        for u, s in clients.items():
-                            if u != sender: send_msg(s, data)
+                        for u in ALLOWED_USERS:
+                            if u == sender: continue
+                            if u in clients: send_msg(clients[u], send_payload)
+                            else:
+                                msg_copy = msg_obj.copy()
+                                msg_copy["delivered"] = False
+                                offline_messages.setdefault(u, []).append(msg_copy)
                 
                 elif receiver in groups:
                     member_list = groups[receiver]
                     with lock:
                         for mem in member_list:
-                            if mem != sender and mem in clients:
-                                send_msg(clients[mem], data)
-                
+                            if mem == sender:
+                                continue
+                            if mem in clients:
+                                send_msg(clients[mem], send_payload)
+                            else:
+                                msg_copy = msg_obj.copy()
+                                msg_copy["delivered"] = False
+                                offline_messages.setdefault(mem, []).append(msg_copy)
+
+      
                 else:
                     with lock:
                         target = clients.get(receiver)
-                        if target: send_msg(target, data)
+                        if target: send_msg(target, send_payload)
+                        else:
+                            msg_copy = msg_obj.copy()
+                            msg_copy["delivered"] = False                    
+                            offline_messages.setdefault(receiver, []).append(msg_copy)
 
         except Exception as e:
             print(f"Lỗi client {username}: {e}")
