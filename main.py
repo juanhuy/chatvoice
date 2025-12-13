@@ -43,6 +43,13 @@ class MainApp(ctk.CTk):
         else:
             messagebox.showerror("Đăng nhập thất bại", f"Lỗi từ Server:\n{result}")
 
+    def register_user(self, ip, user, pwd):
+        result = self.network.register(ip, user, pwd)
+        if result == "OK":
+            messagebox.showinfo("Thành công", "Đăng ký thành công! Bạn có thể đăng nhập ngay.")
+        else:
+            messagebox.showerror("Thất bại", f"Đăng ký thất bại:\n{result}")
+
     def on_data_received(self, data):
         # Hàm callback xử lý dữ liệu từ Network gửi về
         try:

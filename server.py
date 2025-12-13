@@ -6,14 +6,8 @@ import os
 from config import HOST, PORT, HEADER_SIZE
 
 # --- CẤU HÌNH ---
-ALLOWED_USERS = {
-    "admin": "123456",
-    "huy": "123456",
-    "phuoc": "123456",
-    "khanh": "123456",
-    "phu": "123456",
-    "chi": "123456",
-}
+USERS_FILE = "users.json"
+users_db = {}
 
 # --- LƯU TRỮ ---
 clients = {} # {username: socket}
@@ -24,6 +18,22 @@ GROUPS_FILE = "groups.json" # File lưu danh sách nhóm
 MESSAGES_FILE = "messages.json"
 messages = []  # danh sách tin nhắn đã lưu {type, sender, receiver, data}
 lock = threading.Lock()
+
+# --- HÀM XỬ LÝ USER ---
+def load_users():
+    global users_db
+    if not os.path.exists(USERS_FILE): return
+    try:
+        with open(USERS_FILE, "r", encoding="utf-8") as f:
+            users_db = json.load(f)
+            print(f"[*] Đã tải {len(users_db)} users.")
+    except: pass
+
+def save_users():
+    try:
+        with open(USERS_FILE, "w", encoding="utf-8") as f:
+            json.dump(users_db, f, ensure_ascii=False, indent=4)
+    except: pass
 
 # --- HÀM XỬ LÝ FILE NHÓM ---
 def load_groups():
@@ -103,7 +113,7 @@ def handle_client(conn, addr):
                 login_user = parts[1].decode()
                 login_pass = parts[2].decode()
                 
-                if login_user in ALLOWED_USERS and ALLOWED_USERS[login_user] == login_pass:
+                if login_user in users_db and users_db[login_user] == login_pass:
                     is_online = False
                     with lock:
                         if login_user in clients: is_online = True
@@ -141,7 +151,21 @@ def handle_client(conn, addr):
                                     send_msg(conn, reconstructed) 
 
                 else:
-                    send_msg(conn, b"LOGIN_FAIL::Sai mat khau")
+                    send_msg(conn, b"LOGIN_FAIL::Sai mat khau hoac tai khoan khong ton tai")
+
+            # --- XỬ LÝ ĐĂNG KÝ (MỚI) ---
+            elif msg_type == "REGISTER":
+                reg_user = parts[1].decode()
+                reg_pass = parts[2].decode()
+                
+                if reg_user in users_db:
+                    send_msg(conn, b"REGISTER_FAIL::Tai khoan da ton tai")
+                else:
+                    with lock:
+                        users_db[reg_user] = reg_pass
+                        save_users()
+                    send_msg(conn, b"REGISTER_OK")
+                    print(f"[+] Đăng ký mới: {reg_user}")
  
             # --- XỬ LÝ TẠO NHÓM ---
             elif msg_type == "GROUP_CREATE":
@@ -275,14 +299,16 @@ def handle_client(conn, addr):
     conn.close()
 
 def start():
-    # Load nhóm cũ lên khi khởi động server
+    # Load dữ liệu cũ lên khi khởi động server
     load_groups()
+    load_users()
+    load_messages()
     
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.bind((HOST, PORT))
     s.listen()
     print(f"Server đang chạy tại {HOST}:{PORT}")
-    print("Danh sách User:", list(ALLOWED_USERS.keys()))
+    print(f"Đã tải {len(users_db)} users.")
     while True:
         conn, addr = s.accept()
         threading.Thread(target=handle_client, args=(conn, addr), daemon=True).start()

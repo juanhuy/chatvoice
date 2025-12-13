@@ -5,6 +5,7 @@ from tkinter import messagebox
 # Colors
 BG_COLOR = "#36393f"
 ACCENT_COLOR = "#5865F2"
+GREEN_COLOR = "#3ba55c"
 INPUT_BG = "#202225"
 
 class LoginWindow(ctk.CTkToplevel):
@@ -12,7 +13,7 @@ class LoginWindow(ctk.CTkToplevel):
         super().__init__(parent)
         self.parent = parent
         self.title("Đăng nhập")
-        self.geometry("400x450") # Thu nhỏ lại xíu
+        self.geometry("400x500") # Tăng chiều cao để chứa đủ nút
         self.resizable(False, False)
         self.configure(fg_color=BG_COLOR)
         
@@ -51,6 +52,12 @@ class LoginWindow(ctk.CTkToplevel):
                                        command=self.on_login)
         self.btn_login.pack(fill="x", pady=10)
 
+        self.btn_register = ctk.CTkButton(self.main_frame, text="Đăng Ký", 
+                                          fg_color=GREEN_COLOR, hover_color="#2D7D46",
+                                          height=45, font=("Arial", 14, "bold"),
+                                          command=self.on_register)
+        self.btn_register.pack(fill="x", pady=5)
+
         self.protocol("WM_DELETE_WINDOW", parent.destroy)
 
     def on_login(self):
@@ -62,3 +69,13 @@ class LoginWindow(ctk.CTkToplevel):
             return
         # Gọi về main (không cần mode="login" nữa vì chỉ có 1 chức năng)
         self.parent.connect_server(ip, user, pwd)
+
+    def on_register(self):
+        ip = self.ip.get()
+        user = self.user.get()
+        pwd = self.pwd.get()
+        if not ip or not user or not pwd:
+            messagebox.showwarning("Lỗi", "Vui lòng nhập đầy đủ thông tin để đăng ký!")
+            return
+        
+        self.parent.register_user(ip, user, pwd)
