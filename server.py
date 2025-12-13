@@ -42,7 +42,16 @@ def load_groups():
         return
     try:
         with open(GROUPS_FILE, "r", encoding="utf-8") as f:
-            groups = json.load(f)
+            data = json.load(f)
+            # --- MIGRATION: Convert list to dict if needed ---
+            groups = {}
+            for name, val in data.items():
+                if isinstance(val, list):
+                    # Old format: assume first member is admin
+                    groups[name] = {"members": val, "admin": val[0] if val else "admin"}
+                else:
+                    groups[name] = val
+            # -------------------------------------------------
             print(f"[*] Đã tải {len(groups)} nhóm từ file.")
     except Exception as e:
         print(f"[!] Lỗi tải file nhóm: {e}")
@@ -130,8 +139,8 @@ def handle_client(conn, addr):
                         # --- TÍNH NĂNG MỚI: GỬI LẠI DANH SÁCH NHÓM CŨ ---
                         # Kiểm tra xem user này có trong nhóm nào không, nếu có thì gửi lệnh ADD
                         with lock:
-                            for grp_name, members in groups.items():
-                                if username in members:
+                            for grp_name, info in groups.items():
+                                if username in info["members"]:
                                     # Gửi lệnh giả lập như vừa được mời vào nhóm
                                     payload = f"GROUP_ADDED::{grp_name}".encode('utf-8')
                                     send_msg(conn, payload)
@@ -139,9 +148,13 @@ def handle_client(conn, addr):
                         # ---- GỬI TIN NHẮN CŨ CHO USER (OFFLINE MSG) ----
                         with lock:
                             for msg in messages:
+                                # Chỉ gửi lại tin nhắn nội dung, không gửi lại lệnh Call/System cũ
+                                if msg["type"] not in ["TEXTMSG", "VOICEMSG", "FILE"]:
+                                    continue
+
                                 recv = msg["receiver"]
 
-                                if recv == "ALL" or recv == username or (recv in groups and username in groups.get(recv, [])):
+                                if recv == "ALL" or recv == username or (recv in groups and username in groups[recv]["members"]):
                                     
                                     # reconstruct message protocol
                                     reconstructed = (
@@ -173,17 +186,92 @@ def handle_client(conn, addr):
                 members_str = parts[2].decode()
                 members = members_str.split(",")
                 
+                # Người tạo nhóm là admin (username hiện tại của session này)
+                admin = username
+
                 with lock:
-                    groups[group_name] = members
+                    groups[group_name] = {
+                        "members": members,
+                        "admin": admin
+                    }
                     save_groups() # <--- LƯU NGAY VÀO FILE
                 
-                print(f"[G] Nhóm mới: {group_name} - TV: {members}")
+                print(f"[G] Nhóm mới: {group_name} - Admin: {admin} - TV: {members}")
                 
                 notify_payload = f"GROUP_ADDED::{group_name}".encode('utf-8')
                 with lock:
                     for mem in members:
                         if mem in clients:
                             send_msg(clients[mem], notify_payload)
+
+            # --- XỬ LÝ THÊM THÀNH VIÊN VÀO NHÓM (MỚI) ---
+            elif msg_type == "GROUP_ADD_MEMBER":
+                group_name = parts[1].decode()
+                new_member = parts[2].decode()
+                
+                with lock:
+                    if group_name in groups:
+                        # Check if user is admin? (Optional, but good practice. For now let's allow any member to add? Or restrict?)
+                        # User didn't ask to restrict ADD, only REMOVE. So I'll keep ADD open or maybe restrict it too?
+                        # The prompt said "người tạo sẽ là admin nhóm đó" and "nút xóa thành viên".
+                        # Usually only admin adds too, but let's stick to the request: "ok cho tôi nút xóa thành viên với".
+                        # I will just update the structure access.
+                        
+                        current_members = groups[group_name]["members"]
+                        if new_member not in current_members:
+                            current_members.append(new_member)
+                            save_groups()
+                            
+                            # Thông báo cho thành viên mới biết là họ đã được thêm vào nhóm
+                            if new_member in clients:
+                                send_msg(clients[new_member], f"GROUP_ADDED::{group_name}".encode('utf-8'))
+                                
+                            # Gửi lại danh sách thành viên mới cho người yêu cầu (để cập nhật UI)
+                            # Cần gửi cả admin để UI biết
+                            admin_name = groups[group_name].get("admin", "")
+                            members_str = ",".join(current_members)
+                            send_msg(conn, f"GROUP_MEMBERS::{group_name}::{members_str}::{admin_name}".encode('utf-8'))
+
+            # --- XỬ LÝ XÓA THÀNH VIÊN KHỎI NHÓM (MỚI) ---
+            elif msg_type == "GROUP_REMOVE_MEMBER":
+                group_name = parts[1].decode()
+                member_to_remove = parts[2].decode()
+                
+                with lock:
+                    if group_name in groups:
+                        grp_info = groups[group_name]
+                        admin_name = grp_info.get("admin", "")
+                        
+                        # Chỉ admin mới được xóa, trừ khi tự thoát (nhưng ở đây là nút xóa thành viên)
+                        if username == admin_name:
+                            if member_to_remove in grp_info["members"]:
+                                grp_info["members"].remove(member_to_remove)
+                                save_groups()
+                                
+                                # Thông báo cho người bị xóa (nếu cần, hoặc họ sẽ tự thấy mất nhóm khi refresh/login lại)
+                                # Có thể gửi lệnh GROUP_REMOVED nếu muốn realtime, nhưng hiện tại chưa có handler client.
+                                # Ít nhất gửi lại danh sách thành viên mới cho admin (người xóa)
+                                members_str = ",".join(grp_info["members"])
+                                send_msg(conn, f"GROUP_MEMBERS::{group_name}::{members_str}::{admin_name}".encode('utf-8'))
+                                
+                                # Thông báo cho người bị xóa biết?
+                                if member_to_remove in clients:
+                                    # Gửi lệnh GROUP_REMOVED để client tự cập nhật UI
+                                    send_msg(clients[member_to_remove], f"GROUP_REMOVED::{group_name}".encode('utf-8'))
+                        else:
+                            # Không phải admin
+                            pass
+
+            # --- XỬ LÝ LẤY DANH SÁCH THÀNH VIÊN (MỚI) ---
+            elif msg_type == "GROUP_GET_MEMBERS":
+                group_name = parts[1].decode()
+                with lock:
+                    if group_name in groups:
+                        members_list = groups[group_name]["members"]
+                        admin_name = groups[group_name].get("admin", "")
+                        members_str = ",".join(members_list)
+                        # Gửi thêm admin_name vào cuối
+                        send_msg(conn, f"GROUP_MEMBERS::{group_name}::{members_str}::{admin_name}".encode('utf-8'))
 
             # --- XỬ LÝ GROUP CALL (MỚI) ---
             elif msg_type == "GROUP_CALL_START":
@@ -197,7 +285,7 @@ def handle_client(conn, addr):
                 
                 # Notify all group members that a call started
                 if group_name in groups:
-                    members = groups[group_name]
+                    members = groups[group_name]["members"]
                     notify_payload = f"GROUP_CALL_STARTED::{sender}::{group_name}".encode('utf-8')
                     with lock:
                         for mem in members:
@@ -223,7 +311,7 @@ def handle_client(conn, addr):
                             # Notify everyone that the call ended
                             if group_name in groups:
                                 notify_payload = f"GROUP_CALL_ENDED::{group_name}".encode('utf-8')
-                                for mem in groups[group_name]:
+                                for mem in groups[group_name]["members"]:
                                     if mem in clients:
                                         send_msg(clients[mem], notify_payload)
 
@@ -234,8 +322,8 @@ def handle_client(conn, addr):
                 receiver = parts[2].decode()
                 payload = parts[3] if len(parts) > 3 else b""
 
-                # --- LƯU TIN NHẮN (TRỪ AUDIO STREAM) ---
-                if msg_type != "AUDIO_STREAM":
+                # --- LƯU TIN NHẮN (CHỈ LƯU TEXT, VOICE, FILE) ---
+                if msg_type in ["TEXTMSG", "VOICEMSG", "FILE"]:
                     with lock:
                         messages.append({
                             "type": msg_type,
@@ -263,7 +351,16 @@ def handle_client(conn, addr):
                             if u != sender: send_msg(s, data)
                 
                 elif receiver in groups:
-                    member_list = groups[receiver]
+                    member_list = groups[receiver]["members"]
+                    
+                    # --- SECURITY CHECK: Sender must be in the group ---
+                    if sender not in member_list:
+                        # Nếu sender không có trong nhóm, không gửi tin nhắn đi
+                        # Có thể gửi thông báo lỗi về cho sender nếu muốn
+                        # send_msg(conn, b"ERROR::You are not in this group")
+                        continue
+                    # ---------------------------------------------------
+
                     with lock:
                         for mem in member_list:
                             if mem != sender and mem in clients:

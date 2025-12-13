@@ -66,6 +66,11 @@ class MainApp(ctk.CTk):
             elif data.startswith(b"GROUP_ADDED::"):
                 group_name = data.decode().split("::")[1]
                 self.chat_ui.after(0, lambda: self.chat_ui.on_group_created(group_name))
+
+            # 2b. Xử lý khi bị xóa khỏi NHÓM (Mới)
+            elif data.startswith(b"GROUP_REMOVED::"):
+                group_name = data.decode().split("::")[1]
+                self.chat_ui.after(0, lambda: self.chat_ui.on_group_removed(group_name))
                 
             # 3. Xử lý Tin nhắn văn bản
             elif data.startswith(b"TEXTMSG::"):
@@ -148,6 +153,14 @@ class MainApp(ctk.CTk):
             elif data.startswith(b"GROUP_CALL_ENDED::"):
                 group_name = data.decode().split("::")[1]
                 self.chat_ui.after(0, lambda: self.chat_ui.handle_group_call_ended(group_name))
+
+            # 11. Xử lý Group Members List
+            elif data.startswith(b"GROUP_MEMBERS::"):
+                parts = data.decode().split("::")
+                group_name = parts[1]
+                members_str = parts[2]
+                admin_name = parts[3] if len(parts) > 3 else ""
+                self.chat_ui.after(0, lambda: self.chat_ui.display_group_members(group_name, members_str, admin_name))
 
         except Exception as e:
             print(f"Error parsing data: {e}")

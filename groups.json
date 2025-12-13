@@ -1,39 +1,68 @@
 {
-    "aov": [
-        "huy",
-        "admin"
-    ],
-    "lien quan mobile": [
-        "huy",
-        "admin"
-    ],
-    "1": [
-        "huy",
-        "phuoc",
-        "khanh"
-    ],
-    "nhom": [
-        "khanh",
-        "phuoc",
-        "chi"
-    ],
-    "aloalo": [
-        "chi",
-        "khanh",
-        "phuoc",
-        "huy"
-    ],
-    "nhom2": [
-        "khanh",
-        "chi"
-    ],
-    "nhóm bài tập": [
-        "chi",
-        "phuoc"
-    ],
-    "teamptit": [
-        "chi",
-        "huy",
-        "phuoc"
-    ]
+    "aov": {
+        "members": [
+            "huy",
+            "admin"
+        ],
+        "admin": "huy"
+    },
+    "lien quan mobile": {
+        "members": [
+            "huy",
+            "admin"
+        ],
+        "admin": "huy"
+    },
+    "1": {
+        "members": [
+            "huy",
+            "phuoc",
+            "khanh"
+        ],
+        "admin": "huy"
+    },
+    "nhom": {
+        "members": [
+            "khanh",
+            "phuoc",
+            "chi"
+        ],
+        "admin": "khanh"
+    },
+    "aloalo": {
+        "members": [
+            "chi",
+            "khanh",
+            "phuoc",
+            "huy"
+        ],
+        "admin": "chi"
+    },
+    "nhom2": {
+        "members": [
+            "khanh",
+            "chi"
+        ],
+        "admin": "khanh"
+    },
+    "nhóm bài tập": {
+        "members": [
+            "chi",
+            "phuoc"
+        ],
+        "admin": "chi"
+    },
+    "teamptit": {
+        "members": [
+            "chi",
+            "huy"
+        ],
+        "admin": "chi"
+    },
+    "okla": {
+        "members": [
+            "phuoc"
+        ],
+        "admin": "phuoc"
+    }
 }
