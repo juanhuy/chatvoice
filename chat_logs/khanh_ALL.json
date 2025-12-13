@@ -628,5 +628,17 @@
         "sender": "khanh",
         "type": "text",
         "content": "ê"
+    },
+    {
+        "time": "20:32 13/12",
+        "sender": "khanh",
+        "type": "text",
+        "content": "alo"
+    },
+    {
+        "time": "20:33 13/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "chào"
     }
 ]

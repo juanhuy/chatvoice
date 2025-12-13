@@ -75,25 +75,10 @@ def load_offline_messages():
             offline_messages = {}
 
 def save_offline_messages():
-    try:
-        with open(OFFLINE_FILE, "w", encoding="utf-8") as f:
-            json.dump(offline_messages, f, ensure_ascii=False, indent=4)
-    except:
-        pass
-
-def resend_loop():
-    while True:
-        time.sleep(3)
-        with lock:
-            for user, msgs in offline_messages.items():
-                if user in clients:
-                    for m in msgs:
-                        payload = (
-                            f"{m['type']}::{m['id']}::{m['sender']}::{m['receiver']}::"
-                            .encode() + m["data"].encode("latin1")
-                        )
-                        send_msg(clients[user], payload)
-
+    tmp = OFFLINE_FILE + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(offline_messages, f, ensure_ascii=False, indent=4)
+    os.replace(tmp, OFFLINE_FILE)
 
 # --- XỬ LÝ MẠNG ---
 def send_msg(sock, data):
@@ -146,6 +131,7 @@ def handle_client(conn, addr):
                         with lock: clients[login_user] = conn
                         username = login_user
                         send_msg(conn, b"LOGIN_OK")
+                        time.sleep(0.3)
                         broadcast_user_list()
                         print(f"[+] {username} đã đăng nhập.")
 
@@ -164,26 +150,32 @@ def handle_client(conn, addr):
                             for m in msgs:
                                 payload = (
                                     f"{m['type']}::{m['id']}::{m['sender']}::{m['receiver']}::"
-                                    .encode() + m["data"].encode("latin1")
+                                    .encode("utf-8") + m["data"].encode("latin1")
                                 )
                                 send_msg(conn, payload)
-                                    
+                                   
 
                 else:
                     send_msg(conn, b"LOGIN_FAIL::Sai mat khau")
                  # ---------- ACK ----------
             elif msg_type == "ACK":
-                msg_id = parts[1].decode()
+
 
                 if not username:
                     continue
+
+                msg_id = parts[1].decode()
 
                 with lock:
                     msgs = offline_messages.get(username, [])
                     offline_messages[username] = [m for m in msgs if m["id"] != msg_id]
                     if not offline_messages[username]:
-                        offline_messages.pop(username, None)
+                        offline_messages.pop(username, None)                    
                     save_offline_messages()
+                    # for m in offline_messages.get(username, []):
+                    #     if m["id"] == msg_id:
+                    #         m["delivered"] = True
+                    # save_offline_messages()                    
 
             # --- XỬ LÝ ĐĂNG KÝ (MỚI) ---
             elif msg_type == "REGISTER":
@@ -394,7 +386,8 @@ def handle_client(conn, addr):
                     "sender": sender,
                     "receiver": receiver,
                     "data": payload.decode("latin1"),
-                    "time": int(time.time())
+                    "time": int(time.time()),
+                    "delivered": False
                 }
 
                 send_payload = (
@@ -412,19 +405,19 @@ def handle_client(conn, addr):
 
                 # --- XỬ LÝ AUDIO STREAM CHO GROUP ---
                 if msg_type == "AUDIO_STREAM" and receiver in groups:
-                     with lock:
+                    with lock:
                         # Only send to people in the active call
                         if receiver in active_calls:
                             participants = active_calls[receiver]
                             for mem in participants:
                                 if mem != sender and mem in clients:
                                     send_msg(clients[mem], data)
-                     continue # Skip the default broadcasting
+                    continue # Skip the default broadcasting
                 # ------------------------------------
 
                 if receiver == "ALL":
                     with lock:
-                        for u in list(clients.keys()):
+                        for u in users_db.keys():
                             #if u == sender: continue
                             # if u in clients and u!= sender: send_msg(clients[u], send_payload)
                             # else:
@@ -486,9 +479,13 @@ def handle_client(conn, addr):
                         # Notify everyone that the call ended
                         if grp in groups:
                             notify_payload = f"GROUP_CALL_ENDED::{grp}".encode('utf-8')
-                            for mem in groups[grp]:
+                            # for mem in groups[grp]:
+                            #     if mem in clients:
+                            #         send_msg(clients[mem], notify_payload)
+                            for mem in groups[grp]["members"]:
                                 if mem in clients:
                                     send_msg(clients[mem], notify_payload)
+
             # ----------------------------
         broadcast_user_list()
         print(f"[-] {username} đã thoát.")
@@ -509,4 +506,4 @@ def start():
         threading.Thread(target=handle_client, args=(conn, addr), daemon=True).start()
 
 if __name__ == "__main__":
-    threading.Thread(target=resend_loop, daemon=True).start()
+    start()
