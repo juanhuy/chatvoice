@@ -62,9 +62,12 @@ class MainApp(ctk.CTk):
                 
             # 3. Xử lý Tin nhắn văn bản
             elif data.startswith(b"TEXTMSG::"):
-                parts = data.decode().split("::", 3)
-                if len(parts) == 4:
-                    sender, receiver, msg = parts[1], parts[2], parts[3]
+                parts = data.decode(errors="ignore").split("::", 4)
+                if len(parts) == 5:
+                    msg_id  = parts[1]
+                    sender  = parts[2]
+                    receiver= parts[3]
+                    msg     = parts[4]
                     
                     # Logic xác định Tab hiển thị:
                     # - Nếu receiver là ALL -> Tab ALL
@@ -83,21 +86,39 @@ class MainApp(ctk.CTk):
                 
             # 4. Xử lý Tin nhắn thoại
             elif data.startswith(b"VOICEMSG::"):
-                parts = data.split(b"::", 3)
-                if len(parts) == 4:
-                    sender, receiver, audio = parts[1].decode(), parts[2].decode(), parts[3]
+                parts = data.split(b"::", 4)
+                if len(parts) != 5:
+                    return
+                msg_id   = parts[1].decode(errors="ignore")
+                sender   = parts[2].decode(errors="ignore")
+                receiver = parts[3].decode(errors="ignore")
+                audio    = parts[4]   # bytes – KHÔNG decode
+                # if len(parts) == 4:
+                #     sender, receiver, audio = parts[1].decode(), parts[2].decode(), parts[3]
                     
-                    if receiver == "ALL":
-                        target_tab = "ALL"
-                    elif self.chat_ui and receiver in self.chat_ui.joined_groups:
-                        target_tab = receiver
-                    elif receiver == self.chat_ui.username:  # Voice riêng cho mình
-                        target_tab = sender
-                    else:
-                        target_tab = receiver  # Voice riêng với người khác
+                    # if receiver == "ALL":
+                    #     target_tab = "ALL"
+                    # elif self.chat_ui and receiver in self.chat_ui.joined_groups:
+                    #     target_tab = receiver
+                    # elif receiver == self.chat_ui.username:  # Voice riêng cho mình
+                    #     target_tab = sender
+                    # else:
+                    #     target_tab = receiver  # Voice riêng với người khác
                     
-                    self.chat_ui.after(0, lambda: self.chat_ui.display_msg(sender, audio, target_tab, True))
+                    # self.chat_ui.after(0, lambda: self.chat_ui.display_msg(sender, audio, target_tab, True))
+                if receiver == "ALL":
+                    target_tab = "ALL"
+                elif self.chat_ui and receiver in self.chat_ui.joined_groups:
+                    target_tab = receiver
+                elif receiver == self.chat_ui.username:
+                    target_tab = sender
+                else:
+                    target_tab = receiver
 
+                self.chat_ui.after(
+                    0,
+                    lambda: self.chat_ui.display_msg(sender, audio, target_tab, True)
+                )
             # 5. Xử lý File
             elif data.startswith(b"FILE::"):
                 parts = data.split(b"::", 4)

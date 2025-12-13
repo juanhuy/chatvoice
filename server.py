@@ -108,15 +108,13 @@ def handle_client(conn, addr):
                         # ------------------------------------------------
                         # ---- GỬI TIN NHẮN CŨ CHO USER (OFFLINE MSG) ----
                         with lock:
-                            if username in offline_messages:
-                                for msg in offline_messages[username]:
-                                    if msg.get("delivered"): 
-                                        continue
-                                    payload = (
-                                        f"{msg['type']}::{msg['id']}::{msg['sender']}::{msg['receiver']}::"
-                                        .encode() + msg["data"].encode("latin1")
-                                    )
-                                    send_msg(conn, payload)
+                            msgs = offline_messages.get(username, [])
+                            for m in msgs:
+                                payload = (
+                                    f"{m['type']}::{m['id']}::{m['sender']}::{m['receiver']}::"
+                                    .encode() + m["data"].encode("latin1")
+                                )
+                                send_msg(conn, payload)
                                     
 
                 else:
@@ -130,12 +128,9 @@ def handle_client(conn, addr):
 
                 with lock:
                     msgs = offline_messages.get(username, [])
-                    for m in msgs:
-                        if m["id"] == msg_id:
-                            msgs.remove(m)
-                            break
-                    if not msgs and username in offline_messages:
-                        del offline_messages[username]
+                    offline_messages[username] = [m for m in msgs if m["id"] != msg_id]
+                    if not offline_messages[username]:
+                        offline_messages.pop(username, None)
 
 
             # --- XỬ LÝ TẠO NHÓM ---
@@ -167,54 +162,65 @@ def handle_client(conn, addr):
                 if sender != username:
                     continue
 
+                msg_id = str(uuid.uuid4())
                 msg_obj = {
-                    "id": str(uuid.uuid4()),
+                    "id": msg_id,
                     "type": msg_type,
                     "sender": sender,
                     "receiver": receiver,
                     "data": payload.decode("latin1"),
-                    "time": int(time.time()),
-                    "delivered": False
+                    "time": int(time.time())
                 }
 
-
                 send_payload = (
-                    f"{msg_type}::{msg_obj['id']}::{sender}::{receiver}::"
+                    f"{msg_type}::{msg_id}::{sender}::{receiver}::"
                     .encode() + payload
                 )
+
+                def deliver(user):
+                    print("SEND:", send_payload[:100])
+                    if user in clients:
+                        send_msg(clients[user], send_payload)
+                    else:
+                        offline_messages.setdefault(user, []).append(msg_obj.copy())
 
                 if receiver == "ALL":
                     with lock:
                         for u in ALLOWED_USERS:
-                            if u == sender: continue
-                            if u in clients: send_msg(clients[u], send_payload)
-                            else:
-                                msg_copy = msg_obj.copy()
-                                msg_copy["delivered"] = False
-                                offline_messages.setdefault(u, []).append(msg_copy)
-                
+                            #if u == sender: continue
+                            # if u in clients and u!= sender: send_msg(clients[u], send_payload)
+                            # else:
+                            #     msg_copy = msg_obj.copy()
+                            #     msg_copy["delivered"] = False
+                            #     offline_messages.setdefault(u, []).append(msg_copy)
+                            if u != sender:
+                                deliver(u)  
+
                 elif receiver in groups:
                     member_list = groups[receiver]
                     with lock:
-                        for mem in member_list:
-                            if mem == sender:
-                                continue
-                            if mem in clients:
-                                send_msg(clients[mem], send_payload)
-                            else:
-                                msg_copy = msg_obj.copy()
-                                msg_copy["delivered"] = False
-                                offline_messages.setdefault(mem, []).append(msg_copy)
-
+                        # for mem in member_list:
+                            # if mem == sender:
+                            #     continue
+                            # if mem in clients and u!= sender:
+                            #     send_msg(clients[mem], send_payload)
+                            # else:
+                            #     msg_copy = msg_obj.copy()
+                            #     msg_copy["delivered"] = False
+                            #     offline_messages.setdefault(mem, []).append(msg_copy)
+                        for mem in groups[receiver]:    
+                            if mem != sender:
+                                deliver(mem)
       
                 else:
                     with lock:
-                        target = clients.get(receiver)
-                        if target: send_msg(target, send_payload)
-                        else:
-                            msg_copy = msg_obj.copy()
-                            msg_copy["delivered"] = False                    
-                            offline_messages.setdefault(receiver, []).append(msg_copy)
+                        # target = clients.get(receiver)
+                        # if target: send_msg(target, send_payload)
+                        # else:
+                            # msg_copy = msg_obj.copy()
+                            # msg_copy["delivered"] = False                    
+                            # offline_messages.setdefault(receiver, []).append(msg_copy)
+                            deliver(receiver)
 
         except Exception as e:
             print(f"Lỗi client {username}: {e}")

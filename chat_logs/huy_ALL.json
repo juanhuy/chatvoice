@@ -730,5 +730,59 @@
         "sender": "chi",
         "type": "text",
         "content": "mình off nha"
+    },
+    {
+        "time": "18:43 13/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "ê"
+    },
+    {
+        "time": "18:50 13/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "chào"
+    },
+    {
+        "time": "18:50 13/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "chào"
+    },
+    {
+        "time": "18:51 13/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "ê"
+    },
+    {
+        "time": "18:51 13/12",
+        "sender": "huy",
+        "type": "voice",
+        "content": "[Tin nhắn thoại]"
+    },
+    {
+        "time": "18:58 13/12",
+        "sender": "chi",
+        "type": "voice",
+        "content": "[Tin nhắn thoại]"
+    },
+    {
+        "time": "18:58 13/12",
+        "sender": "huy",
+        "type": "voice",
+        "content": "[Tin nhắn thoại]"
+    },
+    {
+        "time": "19:00 13/12",
+        "sender": "chi",
+        "type": "voice",
+        "content": "[Tin nhắn thoại]"
+    },
+    {
+        "time": "19:00 13/12",
+        "sender": "chi",
+        "type": "voice",
+        "content": "[Tin nhắn thoại]"
     }
 ]

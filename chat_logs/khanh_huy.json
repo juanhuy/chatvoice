@@ -10,5 +10,17 @@
         "sender": "huy",
         "type": "text",
         "content": "lô"
+    },
+    {
+        "time": "18:17 13/12",
+        "sender": "7b080044-3815-4a22-bb93-debe390f69af",
+        "type": "text",
+        "content": "ALL::hi"
+    },
+    {
+        "time": "18:43 13/12",
+        "sender": "c2f8a99c-6dea-4331-8569-2f46d7868af7",
+        "type": "text",
+        "content": "ALL::ê"
     }
 ]
