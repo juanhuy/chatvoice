@@ -368,8 +368,8 @@ def handle_client(conn, addr):
                                     if mem in clients:
                                         send_msg(clients[mem], notify_payload)
 
-            # --- XỬ LÝ TIN NHẮN & CUỘC GỌI ---
-            elif msg_type in ["TEXTMSG", "VOICEMSG", "FILE", "CALL_REQUEST", "CALL_ACCEPT", "CALL_REJECT", "CALL_END", "AUDIO_STREAM"]:
+            # --- XỬ LÝ TIN NHẮN CHAT (CÓ LƯU OFFLINE) ---
+            elif msg_type in ["TEXTMSG", "VOICEMSG", "FILE"]:
                 if not username: continue
                 sender = parts[1].decode()
                 receiver = parts[2].decode()
@@ -403,27 +403,9 @@ def handle_client(conn, addr):
                         offline_messages.setdefault(user, []).append(msg_obj.copy())
                         save_offline_messages()
 
-                # --- XỬ LÝ AUDIO STREAM CHO GROUP ---
-                if msg_type == "AUDIO_STREAM" and receiver in groups:
-                    with lock:
-                        # Only send to people in the active call
-                        if receiver in active_calls:
-                            participants = active_calls[receiver]
-                            for mem in participants:
-                                if mem != sender and mem in clients:
-                                    send_msg(clients[mem], data)
-                    continue # Skip the default broadcasting
-                # ------------------------------------
-
                 if receiver == "ALL":
                     with lock:
                         for u in users_db.keys():
-                            #if u == sender: continue
-                            # if u in clients and u!= sender: send_msg(clients[u], send_payload)
-                            # else:
-                            #     msg_copy = msg_obj.copy()
-                            #     msg_copy["delivered"] = False
-                            #     offline_messages.setdefault(u, []).append(msg_copy)
                             if u != sender:
                                 deliver(u)  
 
@@ -432,22 +414,10 @@ def handle_client(conn, addr):
                     
                     # --- SECURITY CHECK: Sender must be in the group ---
                     if sender not in member_list:
-                        # Nếu sender không có trong nhóm, không gửi tin nhắn đi
-                        # Có thể gửi thông báo lỗi về cho sender nếu muốn
-                        # send_msg(conn, b"ERROR::You are not in this group")
                         continue
                     # ---------------------------------------------------
 
                     with lock:
-                        # for mem in member_list:
-                            # if mem == sender:
-                            #     continue
-                            # if mem in clients and u!= sender:
-                            #     send_msg(clients[mem], send_payload)
-                            # else:
-                            #     msg_copy = msg_obj.copy()
-                            #     msg_copy["delivered"] = False
-                            #     offline_messages.setdefault(mem, []).append(msg_copy)
                         for mem in member_list:    
                             if mem != sender:
                                 deliver(mem)
@@ -455,13 +425,43 @@ def handle_client(conn, addr):
                 else:
                     with lock:
                         if receiver != sender:
-                        # target = clients.get(receiver)
-                        # if target: send_msg(target, send_payload)
-                        # else:
-                            # msg_copy = msg_obj.copy()
-                            # msg_copy["delivered"] = False                    
-                            # offline_messages.setdefault(receiver, []).append(msg_copy)
                             deliver(receiver)
+
+            # --- XỬ LÝ AUDIO STREAM (REALTIME, KHÔNG LƯU) ---
+            elif msg_type == "AUDIO_STREAM":
+                if not username: continue
+                sender = parts[1].decode()
+                receiver = parts[2].decode()
+                # payload = parts[3] # Raw audio data
+                
+                # Forward nguyên bản data nhận được (đã bao gồm header từ client gửi lên: AUDIO_STREAM::SENDER::RECEIVER::DATA)
+                # Tuy nhiên, client gửi lên: AUDIO_STREAM::SENDER::RECEIVER::DATA
+                # Server nhận vào 'data' là toàn bộ nội dung đó.
+                # Ta chỉ cần forward 'data' này cho người nhận.
+                
+                if receiver in groups:
+                    with lock:
+                        if receiver in active_calls:
+                            participants = active_calls[receiver]
+                            for mem in participants:
+                                if mem != sender and mem in clients:
+                                    send_msg(clients[mem], data)
+                else:
+                    # 1-1 Call
+                    with lock:
+                        if receiver in clients:
+                            send_msg(clients[receiver], data)
+
+            # --- XỬ LÝ SIGNAL CUỘC GỌI (REALTIME, KHÔNG LƯU) ---
+            elif msg_type in ["CALL_REQUEST", "CALL_ACCEPT", "CALL_REJECT", "CALL_END"]:
+                if not username: continue
+                sender = parts[1].decode()
+                receiver = parts[2].decode()
+                
+                # Forward nguyên bản data
+                with lock:
+                    if receiver in clients:
+                        send_msg(clients[receiver], data)
 
         except Exception as e:
             print(f"Lỗi client {username}: {e}")

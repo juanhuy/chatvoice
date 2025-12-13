@@ -1,71 +1,10 @@
 {
-    "aov": {
+    "teamvn": {
         "members": [
-            "huy",
-            "admin"
-        ],
-        "admin": "huy"
-    },
-    "lien quan mobile": {
-        "members": [
-            "huy",
-            "admin"
-        ],
-        "admin": "huy"
-    },
-    "1": {
-        "members": [
-            "huy",
             "phuoc",
-            "khanh"
-        ],
-        "admin": "huy"
-    },
-    "nhom": {
-        "members": [
-            "khanh",
-            "phuoc",
-            "chi"
-        ],
-        "admin": "khanh"
-    },
-    "aloalo": {
-        "members": [
             "chi",
-            "khanh",
-            "phuoc",
-            "huy"
+            "phu"
         ],
-        "admin": "chi"
-    },
-    "nhom2": {
-        "members": [
-            "khanh",
-            "chi"
-        ],
-        "admin": "khanh"
-    },
-    "nhóm bài tập": {
-        "members": [
-            "chi",
-            "phuoc",
-            "admin"
-        ],
-        "admin": "chi"
-    },
-    "teamptit": {
-        "members": [
-            "chi",
-            "huy"
-        ],
-        "admin": "chi"
-    },
-    "oklaaaaa": {
-        "members": [
-            "huy",
-            "chi",
-            "phuoc"
-        ],
-        "admin": "phuoc"
+        "admin": "phu"
     }
 }
