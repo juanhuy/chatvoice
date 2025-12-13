@@ -211,12 +211,13 @@ def handle_client(conn, addr):
                 
                 with lock:
                     if group_name in groups:
-                        # Check if user is admin? (Optional, but good practice. For now let's allow any member to add? Or restrict?)
-                        # User didn't ask to restrict ADD, only REMOVE. So I'll keep ADD open or maybe restrict it too?
-                        # The prompt said "người tạo sẽ là admin nhóm đó" and "nút xóa thành viên".
-                        # Usually only admin adds too, but let's stick to the request: "ok cho tôi nút xóa thành viên với".
-                        # I will just update the structure access.
-                        
+                        # --- VALIDATION: Check if user exists ---
+                        if new_member not in users_db:
+                            # User does not exist
+                            print(f"[!] Thêm thành viên thất bại: {new_member} không tồn tại.")
+                            continue
+                        # ----------------------------------------
+
                         current_members = groups[group_name]["members"]
                         if new_member not in current_members:
                             current_members.append(new_member)
@@ -272,6 +273,13 @@ def handle_client(conn, addr):
                         members_str = ",".join(members_list)
                         # Gửi thêm admin_name vào cuối
                         send_msg(conn, f"GROUP_MEMBERS::{group_name}::{members_str}::{admin_name}".encode('utf-8'))
+
+            # --- XỬ LÝ LẤY TẤT CẢ USER (MỚI) ---
+            elif msg_type == "GET_ALL_USERS":
+                with lock:
+                    all_users = list(users_db.keys())
+                    users_str = ",".join(all_users)
+                    send_msg(conn, f"ALL_USERS::{users_str}".encode('utf-8'))
 
             # --- XỬ LÝ GROUP CALL (MỚI) ---
             elif msg_type == "GROUP_CALL_START":

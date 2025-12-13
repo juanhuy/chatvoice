@@ -162,6 +162,11 @@ class MainApp(ctk.CTk):
                 admin_name = parts[3] if len(parts) > 3 else ""
                 self.chat_ui.after(0, lambda: self.chat_ui.display_group_members(group_name, members_str, admin_name))
 
+            # 12. Xử lý All Users List (cho tính năng Add Member)
+            elif data.startswith(b"ALL_USERS::"):
+                users_str = data.decode().split("::")[1]
+                self.chat_ui.after(0, lambda: self.chat_ui.update_all_users_combo(users_str))
+
         except Exception as e:
             print(f"Error parsing data: {e}")
 

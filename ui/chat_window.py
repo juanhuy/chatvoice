@@ -144,8 +144,18 @@ class ChatWindow(ctk.CTkFrame):
         self.add_member_frame = ctk.CTkFrame(self.right_sidebar, fg_color="transparent")
         self.add_member_frame.pack(fill="x", padx=10, pady=20)
         
-        self.txt_add_member = ctk.CTkEntry(self.add_member_frame, placeholder_text="Thêm thành viên...", height=30)
-        self.txt_add_member.pack(fill="x", pady=(0, 5))
+        # Thay Entry bằng ComboBox để search/chọn thành viên
+        self.cbo_add_member = ctk.CTkComboBox(self.add_member_frame, values=[], height=30,
+                                              fg_color=INPUT_BG, border_color=INPUT_BG,
+                                              button_color=INPUT_BG, button_hover_color=HOVER_COLOR,
+                                              dropdown_fg_color=BG_SECONDARY, dropdown_text_color="white",
+                                              text_color="white", state="readonly")
+        self.cbo_add_member.set("Chọn thành viên...")
+        self.cbo_add_member.pack(fill="x", pady=(0, 5))
+        
+        # Khi click vào combobox (hoặc focus), ta sẽ request list user mới nhất
+        # Tuy nhiên CTkComboBox không có event <FocusIn> dễ dàng, ta sẽ request khi mở Info Panel
+        
         ctk.CTkButton(self.add_member_frame, text="Thêm", fg_color=ACCENT_COLOR, height=30,
                       command=self.add_member_action).pack(fill="x")
 
@@ -579,16 +589,42 @@ class ChatWindow(ctk.CTkFrame):
     def update_group_info(self, group_name):
         # Gửi yêu cầu lấy danh sách thành viên
         self.network.send(f"GROUP_GET_MEMBERS::{group_name}".encode('utf-8'))
-        # UI sẽ được cập nhật khi nhận phản hồi từ server (handle_group_members)
+        # Gửi yêu cầu lấy danh sách TẤT CẢ user để nạp vào combobox
+        self.network.send(b"GET_ALL_USERS")
+
+    def update_all_users_combo(self, users_str):
+        """Cập nhật danh sách user vào combobox thêm thành viên"""
+        all_users = users_str.split(",") if users_str else []
+        
+        # Lấy danh sách thành viên hiện tại của nhóm (để loại trừ)
+        # Hiện tại ta chưa lưu danh sách thành viên vào biến local của class một cách structured
+        # Nhưng ta có thể lấy từ UI hoặc chờ server gửi về.
+        # Tuy nhiên, đơn giản nhất là cứ hiện hết, hoặc lọc nếu có thể.
+        # Để lọc chính xác, ta cần biết members của nhóm hiện tại.
+        # Biến self.current_group_members sẽ được cập nhật ở display_group_members
+        
+        current_members = getattr(self, "current_group_members", [])
+        
+        available_users = [u for u in all_users if u not in current_members]
+        
+        if available_users:
+            self.cbo_add_member.configure(values=available_users)
+            self.cbo_add_member.set(available_users[0])
+        else:
+            self.cbo_add_member.configure(values=["(Trống)"])
+            self.cbo_add_member.set("(Trống)")
 
     def display_group_members(self, group_name, members_str, admin_name=""):
         if self.current_receiver != group_name: return
+        
+        # Lưu lại danh sách thành viên để dùng cho việc lọc combobox
+        members = members_str.split(",")
+        self.current_group_members = members
         
         # Xóa cũ
         for widget in self.member_list_frame.winfo_children():
             widget.destroy()
             
-        members = members_str.split(",")
         ctk.CTkLabel(self.member_list_frame, text=f"THÀNH VIÊN - {len(members)}", 
                      font=("gg sans", 11, "bold"), text_color=TIMESTAMP_COLOR, anchor="w").pack(fill="x", pady=(0, 10))
         
@@ -613,6 +649,11 @@ class ChatWindow(ctk.CTkFrame):
             if is_admin and mem != self.username:
                 ctk.CTkButton(row, text="❌", width=25, height=25, fg_color="transparent", hover_color=RED_COLOR,
                               command=lambda m=mem: self.remove_member_action(m)).pack(side="right")
+        
+        # --- REFRESH COMBOBOX ---
+        # Khi danh sách thành viên thay đổi, ta cần cập nhật lại dropdown để loại bỏ người vừa thêm
+        self.network.send(b"GET_ALL_USERS")
+        # ------------------------
 
     def remove_member_action(self, member_name):
         ans = messagebox.askyesno("Xóa thành viên", f"Bạn có chắc muốn xóa {member_name} khỏi nhóm?")
@@ -621,13 +662,13 @@ class ChatWindow(ctk.CTkFrame):
             self.network.send(payload)
 
     def add_member_action(self):
-        new_mem = self.txt_add_member.get().strip()
-        if not new_mem: return
+        new_mem = self.cbo_add_member.get()
+        if not new_mem or new_mem == "(Trống)" or new_mem == "Chọn thành viên...": return
         
         # Gửi yêu cầu thêm thành viên
         payload = f"GROUP_ADD_MEMBER::{self.current_receiver}::{new_mem}".encode('utf-8')
         self.network.send(payload)
-        self.txt_add_member.delete(0, "end")
+        self.cbo_add_member.set("Chọn thành viên...")
 
     def send_text(self, event=None):
         text = self.msg_entry.get().strip()
