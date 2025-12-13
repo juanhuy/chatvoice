@@ -71,6 +71,11 @@ class MainApp(ctk.CTk):
             elif data.startswith(b"GROUP_REMOVED::"):
                 group_name = data.decode().split("::")[1]
                 self.chat_ui.after(0, lambda: self.chat_ui.on_group_removed(group_name))
+
+            # 2c. Xử lý khi NHÓM BỊ GIẢI TÁN (Mới)
+            elif data.startswith(b"GROUP_DELETED::"):
+                group_name = data.decode().split("::")[1]
+                self.chat_ui.after(0, lambda: self.chat_ui.on_group_deleted(group_name))
                 
             # 3. Xử lý Tin nhắn văn bản
             elif data.startswith(b"TEXTMSG::"):

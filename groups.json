@@ -48,7 +48,8 @@
     "nhóm bài tập": {
         "members": [
             "chi",
-            "phuoc"
+            "phuoc",
+            "admin"
         ],
         "admin": "chi"
     },
@@ -58,12 +59,5 @@
             "huy"
         ],
         "admin": "chi"
-    },
-    "okla": {
-        "members": [
-            "phuoc",
-            "chi"
-        ],
-        "admin": "phuoc"
     }
 }

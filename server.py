@@ -211,6 +211,15 @@ def handle_client(conn, addr):
                 
                 with lock:
                     if group_name in groups:
+                        # --- SECURITY CHECK: Only Admin can add members ---
+                        grp_info = groups[group_name]
+                        admin_name = grp_info.get("admin", "")
+                        
+                        if username != admin_name:
+                            print(f"[!] {username} cố gắng thêm thành viên vào nhóm {group_name} nhưng không phải admin.")
+                            continue
+                        # --------------------------------------------------
+
                         # --- VALIDATION: Check if user exists ---
                         if new_member not in users_db:
                             # User does not exist
@@ -262,6 +271,31 @@ def handle_client(conn, addr):
                         else:
                             # Không phải admin
                             pass
+
+            # --- XỬ LÝ GIẢI TÁN NHÓM (MỚI) ---
+            elif msg_type == "GROUP_DELETE":
+                group_name = parts[1].decode()
+                
+                with lock:
+                    if group_name in groups:
+                        grp_info = groups[group_name]
+                        admin_name = grp_info.get("admin", "")
+                        
+                        if username == admin_name:
+                            # Lấy danh sách thành viên để thông báo trước khi xóa
+                            members = grp_info["members"]
+                            notify_payload = f"GROUP_DELETED::{group_name}".encode('utf-8')
+                            
+                            for mem in members:
+                                if mem in clients:
+                                    send_msg(clients[mem], notify_payload)
+                            
+                            # Xóa nhóm khỏi DB
+                            del groups[group_name]
+                            save_groups()
+                            print(f"[-] Nhóm {group_name} đã bị giải tán bởi {username}")
+                        else:
+                            print(f"[!] {username} cố gắng xóa nhóm {group_name} nhưng không phải admin.")
 
             # --- XỬ LÝ LẤY DANH SÁCH THÀNH VIÊN (MỚI) ---
             elif msg_type == "GROUP_GET_MEMBERS":
