@@ -1,0 +1,908 @@
+[
+    {
+        "time": "18:00 06/12",
+        "sender": "admin",
+        "type": "text",
+        "content": "🎉"
+    },
+    {
+        "time": "18:00 06/12",
+        "sender": "admin",
+        "type": "text",
+        "content": "hello"
+    },
+    {
+        "time": "18:00 06/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "vcl"
+    },
+    {
+        "time": "18:00 06/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "chắn gif vậy"
+    },
+    {
+        "time": "18:02 06/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "s"
+    },
+    {
+        "time": "23:54 06/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "hello"
+    },
+    {
+        "time": "23:54 06/12",
+        "sender": "admin",
+        "type": "text",
+        "content": "chào huy tôi có thể tạo nhóm với bạn"
+    },
+    {
+        "time": "00:01 07/12",
+        "sender": "admin",
+        "type": "text",
+        "content": "oke bạn"
+    },
+    {
+        "time": "18:30 07/12",
+        "sender": "admin",
+        "type": "voice",
+        "content": "[Tin nhắn thoại]"
+    },
+    {
+        "time": "18:37 07/12",
+        "sender": "admin",
+        "type": "text",
+        "content": "[Nhận file] 113d45d8-dcc2-4db4-8217-e470d3aed5a5.jfif"
+    },
+    {
+        "time": "19:00 07/12",
+        "sender": "admin",
+        "type": "voice",
+        "content": "[Tin nhắn thoại]"
+    },
+    {
+        "time": "19:47 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "alo alo"
+    },
+    {
+        "time": "19:53 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "alo"
+    },
+    {
+        "time": "19:53 11/12",
+        "sender": "huy",
+        "type": "voice",
+        "content": "[Tin nhắn thoại]"
+    },
+    {
+        "time": "19:53 11/12",
+        "sender": "khanh",
+        "type": "text",
+        "content": "nghe"
+    },
+    {
+        "time": "19:53 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "thấy t không"
+    },
+    {
+        "time": "19:53 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "oke ngon"
+    },
+    {
+        "time": "19:53 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "nghe ấy k"
+    },
+    {
+        "time": "19:53 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "huh"
+    },
+    {
+        "time": "19:53 11/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "thấy"
+    },
+    {
+        "time": "19:53 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "oke ngon"
+    },
+    {
+        "time": "19:53 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "hay"
+    },
+    {
+        "time": "19:53 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "voichat k mn"
+    },
+    {
+        "time": "19:53 11/12",
+        "sender": "huy",
+        "type": "voice",
+        "content": "[Tin nhắn thoại]"
+    },
+    {
+        "time": "19:53 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "nghe tiếng"
+    },
+    {
+        "time": "19:53 11/12",
+        "sender": "khanh",
+        "type": "text",
+        "content": "ngjhe m"
+    },
+    {
+        "time": "19:53 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "ngon"
+    },
+    {
+        "time": "19:53 11/12",
+        "sender": "chi",
+        "type": "voice",
+        "content": "[Tin nhắn thoại]"
+    },
+    {
+        "time": "19:54 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "quá đã"
+    },
+    {
+        "time": "19:54 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "giờ thêm gì không ta"
+    },
+    {
+        "time": "19:54 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "nhưng vẫn chưa ổn nha mng, chatvoice 0 phải như vậy"
+    },
+    {
+        "time": "19:54 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "v hã a"
+    },
+    {
+        "time": "19:54 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "phải như zalo kìa"
+    },
+    {
+        "time": "19:54 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "gọi luôn hã a"
+    },
+    {
+        "time": "19:54 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "này gửi voice thôi"
+    },
+    {
+        "time": "19:54 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "đúng rồi"
+    },
+    {
+        "time": "19:54 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "uầy"
+    },
+    {
+        "time": "19:54 11/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "nãy thử chuyển voice thành văn bản mà nó chuyển sai ko"
+    },
+    {
+        "time": "19:54 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "căng v"
+    },
+    {
+        "time": "19:54 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "0 sao"
+    },
+    {
+        "time": "19:55 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "vẫn đc"
+    },
+    {
+        "time": "19:55 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "em tưởng chat voice là gửi chứ"
+    },
+    {
+        "time": "19:55 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "nhưng giao diện ok nè"
+    },
+    {
+        "time": "19:55 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "dạ anh"
+    },
+    {
+        "time": "19:55 11/12",
+        "sender": "khanh",
+        "type": "text",
+        "content": "chat voice chứ không phải call anh ơi"
+    },
+    {
+        "time": "19:55 11/12",
+        "sender": "khanh",
+        "type": "text",
+        "content": "chat voice là dạng này á anh"
+    },
+    {
+        "time": "19:55 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "lamf call khó không ta"
+    },
+    {
+        "time": "19:55 11/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "cái emoji hơi lỗi"
+    },
+    {
+        "time": "19:55 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "hehe"
+    },
+    {
+        "time": "19:55 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "emoji cho có é"
+    },
+    {
+        "time": "19:55 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "😡"
+    },
+    {
+        "time": "19:55 11/12",
+        "sender": "khanh",
+        "type": "text",
+        "content": "còn không là đề của mình là xây dựng call voice rồi"
+    },
+    {
+        "time": "19:55 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "👎"
+    },
+    {
+        "time": "19:55 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "adu"
+    },
+    {
+        "time": "19:55 11/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "em nghĩ giống khánh"
+    },
+    {
+        "time": "19:56 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "vậy thì có khác gì app của đề tài 9 đâu"
+    },
+    {
+        "time": "19:56 11/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "nãy tra thử mấy web chat voice giống mình ko"
+    },
+    {
+        "time": "19:56 11/12",
+        "sender": "khanh",
+        "type": "text",
+        "content": "thầy nói rồi á anh"
+    },
+    {
+        "time": "19:56 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "anh nghĩ cái thầy muốn là như zalo ấy"
+    },
+    {
+        "time": "19:56 11/12",
+        "sender": "khanh",
+        "type": "text",
+        "content": "thầy nói 9 là text"
+    },
+    {
+        "time": "19:56 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "v thầy muốn call gòi"
+    },
+    {
+        "time": "19:56 11/12",
+        "sender": "khanh",
+        "type": "text",
+        "content": "mình là voice á anh"
+    },
+    {
+        "time": "19:56 11/12",
+        "sender": "khanh",
+        "type": "text",
+        "content": "em nghe thầy nói thế"
+    },
+    {
+        "time": "19:56 11/12",
+        "sender": "khanh",
+        "type": "text",
+        "content": "không thì thầy để đề mình là call á anh"
+    },
+    {
+        "time": "19:56 11/12",
+        "sender": "khanh",
+        "type": "text",
+        "content": "chat voice là dạng này"
+    },
+    {
+        "time": "19:57 11/12",
+        "sender": "khanh",
+        "type": "text",
+        "content": "còn call mới giống zalo"
+    },
+    {
+        "time": "19:57 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "để tối hay mai gì làm call thử giữ lại source này"
+    },
+    {
+        "time": "19:57 11/12",
+        "sender": "khanh",
+        "type": "text",
+        "content": "nhóm 9 giống mình nhưng chỉ làm dạng text thôi"
+    },
+    {
+        "time": "19:57 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "giờ hỏi thầy thì quá kì"
+    },
+    {
+        "time": "19:57 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "thêm cái call đi"
+    },
+    {
+        "time": "19:57 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "update thêm"
+    },
+    {
+        "time": "19:57 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "để an toàn"
+    },
+    {
+        "time": "19:57 11/12",
+        "sender": "khanh",
+        "type": "text",
+        "content": "em nghe thầy nói thế á"
+    },
+    {
+        "time": "19:57 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "dạ để mai e thêm với chỉnh emoji"
+    },
+    {
+        "time": "19:57 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "làm nhiều vậy ba"
+    },
+    {
+        "time": "19:57 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "chia task ra cho mng làm chung với"
+    },
+    {
+        "time": "19:58 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "không tốn tg lắm á a..."
+    },
+    {
+        "time": "19:58 11/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "[Nhận file] Đề tài 10_Chat voice mạng nội bộ.m4a"
+    },
+    {
+        "time": "19:58 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "k gửi file đc CHi ơi"
+    },
+    {
+        "time": "19:58 11/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "https://drive.google.com/drive/folders/19kYaXXqid3VAx6_YNEaL26hLg4nxpr6D?hl=vi"
+    },
+    {
+        "time": "19:58 11/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "tuicos ghi âm thầy dặn"
+    },
+    {
+        "time": "19:58 11/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "kaka để gửi qua zalo"
+    },
+    {
+        "time": "19:58 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "oke bà kk"
+    },
+    {
+        "time": "19:58 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "với lại khi code, hình như chưa có đồng bộ đúng 0"
+    },
+    {
+        "time": "19:58 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "dạ đr"
+    },
+    {
+        "time": "19:59 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "ví dụ giờ anh tắt app"
+    },
+    {
+        "time": "19:59 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "lát vô lại"
+    },
+    {
+        "time": "19:59 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "là mất đoạn chat nãy h đúng 0"
+    },
+    {
+        "time": "19:59 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "dạ k a"
+    },
+    {
+        "time": "19:59 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "vẫn lưu"
+    },
+    {
+        "time": "19:59 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "ok để out ra"
+    },
+    {
+        "time": "19:59 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "dạ a"
+    },
+    {
+        "time": "19:59 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "ai nhắn gì nhắn đi"
+    },
+    {
+        "time": "19:59 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "oke a"
+    },
+    {
+        "time": "19:59 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "Khánh ơi"
+    },
+    {
+        "time": "19:59 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "hú"
+    },
+    {
+        "time": "20:00 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "rồi coi coi có đồng bộ mấy tin nhắn của mng về máy anh 0"
+    },
+    {
+        "time": "20:00 11/12",
+        "sender": "khanh",
+        "type": "text",
+        "content": "alo"
+    },
+    {
+        "time": "20:00 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "thấy tn cũ k ku"
+    },
+    {
+        "time": "20:00 11/12",
+        "sender": "khanh",
+        "type": "text",
+        "content": "cái gửi nhóm với gửi riêng từng người bị lỗi"
+    },
+    {
+        "time": "20:00 11/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "à nhắn lại đc r"
+    },
+    {
+        "time": "20:00 11/12",
+        "sender": "khanh",
+        "type": "text",
+        "content": "🔥"
+    },
+    {
+        "time": "20:00 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "bấm emoji  nó hết lỗi đó kakaka"
+    },
+    {
+        "time": "20:00 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "chưa sửa nx<"
+    },
+    {
+        "time": "20:01 11/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "tính năng hay đó ai ở ngoài dùng ko đc kaka"
+    },
+    {
+        "time": "20:01 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "😎"
+    },
+    {
+        "time": "20:02 11/12",
+        "sender": "khanh",
+        "type": "text",
+        "content": "nhắn riêng với nhắn nhóm lỗi ha"
+    },
+    {
+        "time": "20:03 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "✅"
+    },
+    {
+        "time": "20:03 11/12",
+        "sender": "phuoc",
+        "type": "voice",
+        "content": "[Tin nhắn thoại]"
+    },
+    {
+        "time": "20:04 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "huhh"
+    },
+    {
+        "time": "20:04 11/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "thấy k Khánh"
+    },
+    {
+        "time": "20:04 11/12",
+        "sender": "khanh",
+        "type": "text",
+        "content": "thấy"
+    },
+    {
+        "time": "20:05 11/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "thử nhóm 2 thôi vẫn lỗi"
+    },
+    {
+        "time": "20:05 11/12",
+        "sender": "khanh",
+        "type": "text",
+        "content": "nhóm nào cũng không được á"
+    },
+    {
+        "time": "20:06 11/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "chỉ nhắn đc all thôi"
+    },
+    {
+        "time": "20:08 11/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "ai nhắn gì đi"
+    },
+    {
+        "time": "20:09 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "ok nhắn nè"
+    },
+    {
+        "time": "20:10 11/12",
+        "sender": "phuoc",
+        "type": "text",
+        "content": "em định test gì"
+    },
+    {
+        "time": "20:10 11/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "ok em tưởng out ra vô lại là ko xem đc nữa"
+    },
+    {
+        "time": "20:22 11/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "alo"
+    },
+    {
+        "time": "20:22 11/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "còn gì ko"
+    },
+    {
+        "time": "20:23 11/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "mình off nha"
+    },
+    {
+        "time": "18:43 13/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "ê"
+    },
+    {
+        "time": "18:50 13/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "chào"
+    },
+    {
+        "time": "18:50 13/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "chào"
+    },
+    {
+        "time": "18:51 13/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "ê"
+    },
+    {
+        "time": "18:51 13/12",
+        "sender": "huy",
+        "type": "voice",
+        "content": "[Tin nhắn thoại]"
+    },
+    {
+        "time": "18:58 13/12",
+        "sender": "chi",
+        "type": "voice",
+        "content": "[Tin nhắn thoại]"
+    },
+    {
+        "time": "18:58 13/12",
+        "sender": "huy",
+        "type": "voice",
+        "content": "[Tin nhắn thoại]"
+    },
+    {
+        "time": "19:00 13/12",
+        "sender": "chi",
+        "type": "voice",
+        "content": "[Tin nhắn thoại]"
+    },
+    {
+        "time": "19:00 13/12",
+        "sender": "chi",
+        "type": "voice",
+        "content": "[Tin nhắn thoại]"
+    },
+    {
+        "time": "19:22 13/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "alo"
+    },
+    {
+        "time": "19:31 13/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "alo"
+    },
+    {
+        "time": "19:31 13/12",
+        "sender": "huy",
+        "type": "voice",
+        "content": "[Tin nhắn thoại]"
+    },
+    {
+        "time": "19:31 13/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "hi"
+    },
+    {
+        "time": "19:31 13/12",
+        "sender": "huy",
+        "type": "voice",
+        "content": "[Tin nhắn thoại]"
+    },
+    {
+        "time": "20:04 13/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "hi"
+    },
+    {
+        "time": "20:04 13/12",
+        "sender": "huy",
+        "type": "voice",
+        "content": "[Tin nhắn thoại]"
+    },
+    {
+        "time": "20:04 13/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "hi"
+    },
+    {
+        "time": "20:04 13/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "helo"
+    },
+    {
+        "time": "20:04 13/12",
+        "sender": "huy",
+        "type": "voice",
+        "content": "[Tin nhắn thoại]"
+    },
+    {
+        "time": "20:05 13/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "helo"
+    },
+    {
+        "time": "20:05 13/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "alo"
+    },
+    {
+        "time": "20:16 13/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "chi"
+    },
+    {
+        "time": "20:16 13/12",
+        "sender": "huy",
+        "type": "voice",
+        "content": "[Tin nhắn thoại]"
+    },
+    {
+        "time": "20:21 13/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "12345"
+    },
+    {
+        "time": "20:21 13/12",
+        "sender": "huy",
+        "type": "voice",
+        "content": "[Tin nhắn thoại]"
+    },
+    {
+        "time": "20:22 13/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "123"
+    },
+    {
+        "time": "20:28 13/12",
+        "sender": "huy",
+        "type": "text",
+        "content": "yeah"
+    },
+    {
+        "time": "20:28 13/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "ê"
+    },
+    {
+        "time": "20:47 13/12",
+        "sender": "chi",
+        "type": "text",
+        "content": "alo"
+    }
+]
