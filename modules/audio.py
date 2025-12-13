@@ -1,13 +1,18 @@
 # modules/audio.py
 import sounddevice as sd
 import numpy as np
-import os # <--- Nhớ import thư viện này
-from config import SAMPLE_RATE, CHANNELS, CHUNK
+import os 
+import queue
+import threading
+from config import SAMPLE_RATE, CHANNELS, CHUNK, SILENCE_THRESHOLD
 
 class AudioManager:
     def __init__(self):
         self.is_recording = False
         self.frames = []
+        self.audio_queue = queue.Queue()
+        self.is_playing_stream = False
+        self.play_thread = None
 
     def start_recording(self):
         self.is_recording = True
@@ -76,21 +81,52 @@ class AudioManager:
     def _stream_input_callback(self, indata, frames, time, status):
         if status: print(f"Stream status: {status}")
         if self.is_streaming and self.stream_callback:
-            self.stream_callback(indata.tobytes())
+            # --- VAD: Silence Suppression ---
+            # Tính biên độ trung bình (RMS) của chunk
+            # indata là numpy array int16
+            volume = np.linalg.norm(indata) * 10
+            
+            # Chỉ gửi nếu âm lượng lớn hơn ngưỡng
+            if volume > SILENCE_THRESHOLD:
+                self.stream_callback(indata.tobytes())
 
     def stop_streaming(self):
         """Dừng stream mic"""
         self.is_streaming = False
+        self.is_playing_stream = False # Stop playback thread
+        
+        # Clear queue to prevent old audio from playing next time
+        with self.audio_queue.mutex:
+            self.audio_queue.queue.clear()
+
         if hasattr(self, 'input_stream'):
             self.input_stream.stop()
             self.input_stream.close()
+        
         if hasattr(self, 'output_stream'):
             self.output_stream.stop()
             self.output_stream.close()
             del self.output_stream
 
     def play_stream_chunk(self, data_bytes):
-        """Phát 1 chunk âm thanh nhận được"""
+        """Thêm chunk vào hàng đợi để phát"""
+        # --- LATENCY CONTROL: Drop old packets if queue is too full ---
+        if self.audio_queue.qsize() > 10: # Nếu hàng đợi > 10 chunks (~200ms)
+            try:
+                # Xả bớt 5 chunk cũ nhất để bắt kịp thời gian thực
+                for _ in range(5): self.audio_queue.get_nowait()
+            except queue.Empty: pass
+        # --------------------------------------------------------------
+
+        self.audio_queue.put(data_bytes)
+        
+        if not self.is_playing_stream:
+            self.is_playing_stream = True
+            self.play_thread = threading.Thread(target=self._playback_loop, daemon=True)
+            self.play_thread.start()
+
+    def _playback_loop(self):
+        """Luồng riêng để phát âm thanh từ hàng đợi"""
         if not hasattr(self, 'output_stream'):
             self.output_stream = sd.OutputStream(
                 samplerate=SAMPLE_RATE, 
@@ -99,9 +135,14 @@ class AudioManager:
                 blocksize=CHUNK
             )
             self.output_stream.start()
-        
-        try:
-            data_np = np.frombuffer(data_bytes, dtype=np.int16)
-            self.output_stream.write(data_np)
-        except Exception as e:
-            print(f"Lỗi phát stream: {e}")
+
+        while self.is_playing_stream:
+            try:
+                data_bytes = self.audio_queue.get(timeout=1) # Chờ 1s nếu không có data
+                data_np = np.frombuffer(data_bytes, dtype=np.int16)
+                self.output_stream.write(data_np)
+            except queue.Empty:
+                continue
+            except Exception as e:
+                print(f"Lỗi playback loop: {e}")
+                break

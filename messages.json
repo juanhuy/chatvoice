@@ -1,14 +1,20 @@
 [
     {
         "type": "CALL_REQUEST",
+        "sender": "huy",
+        "receiver": "chi",
+        "data": ""
+    },
+    {
+        "type": "CALL_ACCEPT",
         "sender": "chi",
-        "receiver": "nhóm bài tập",
+        "receiver": "huy",
         "data": ""
     },
     {
         "type": "CALL_END",
         "sender": "chi",
-        "receiver": "nhóm bài tập",
+        "receiver": "huy",
         "data": ""
     }
 ]

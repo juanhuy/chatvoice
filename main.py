@@ -130,6 +130,18 @@ class MainApp(ctk.CTk):
                     audio_data = parts[3]
                     self.audio.play_stream_chunk(audio_data)
 
+            # 9. Xử lý Group Call Started
+            elif data.startswith(b"GROUP_CALL_STARTED::"):
+                parts = data.decode().split("::")
+                sender = parts[1]
+                group_name = parts[2]
+                self.chat_ui.after(0, lambda: self.chat_ui.handle_group_call_started(sender, group_name))
+
+            # 10. Xử lý Group Call Ended
+            elif data.startswith(b"GROUP_CALL_ENDED::"):
+                group_name = data.decode().split("::")[1]
+                self.chat_ui.after(0, lambda: self.chat_ui.handle_group_call_ended(group_name))
+
         except Exception as e:
             print(f"Error parsing data: {e}")
 

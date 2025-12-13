@@ -29,6 +29,7 @@ class ChatWindow(ctk.CTkFrame):
         self.frames_store = {}
         self.online_users = [] 
         self.joined_groups = [] 
+        self.active_group_calls = [] # Danh sách các nhóm đang có cuộc gọi
         self.is_calling = False
         self.call_target = None
 
@@ -156,16 +157,104 @@ class ChatWindow(ctk.CTkFrame):
             messagebox.showwarning("Call", "Không thể gọi cho kênh chung!")
             return
         
+        # --- GROUP CALL LOGIC ---
+        if target in self.joined_groups:
+            # Nếu đang trong cuộc gọi nhóm này rồi thì không làm gì
+            if self.is_calling and self.call_target == target:
+                return
+            
+            # Bắt đầu cuộc gọi nhóm
+            self.is_calling = True
+            self.call_target = target
+            self.btn_call.configure(text="📞 Leave", fg_color=RED_COLOR, command=self.leave_group_call)
+            
+            # Gửi lệnh Start (hoặc Join)
+            if target in self.active_group_calls:
+                payload = f"GROUP_CALL_JOIN::{self.username}::{target}".encode('utf-8')
+            else:
+                payload = f"GROUP_CALL_START::{self.username}::{target}".encode('utf-8')
+                self.active_group_calls.append(target)
+                
+            self.network.send(payload)
+            
+            # Bắt đầu stream ngay
+            self.start_streaming_audio(target)
+            print(f"Đã tham gia cuộc gọi nhóm {target}")
+            return
+        # ------------------------
+        
         self.is_calling = True
         self.btn_call.configure(text="📞 End", fg_color=RED_COLOR, command=self.end_call)
         
-        # Gửi yêu cầu gọi
+        # Gửi yêu cầu gọi 1-1
         payload = f"CALL_REQUEST::{self.username}::{target}".encode('utf-8')
         self.network.send(payload)
         print(f"Đang gọi cho {target}...")
 
+    def leave_group_call(self):
+        """Rời cuộc gọi nhóm"""
+        target = self.call_target
+        if not target: return
+
+        self.is_calling = False
+        self.call_target = None
+        self.audio.stop_streaming()
+        
+        # Reset nút Call nếu đang ở tab đó
+        if self.current_receiver == target:
+            # Nếu vẫn còn người trong call (logic này client chưa biết chính xác, nhưng cứ hiện Join Call nếu còn trong active list)
+            if target in self.active_group_calls:
+                self.btn_call.configure(text="📞 Join Call", fg_color=GREEN_COLOR, command=self.start_call)
+            else:
+                self.btn_call.configure(text="📞 Call", fg_color=GREEN_COLOR, command=self.start_call)
+            
+        # Gửi lệnh Leave
+        payload = f"GROUP_CALL_LEAVE::{self.username}::{target}".encode('utf-8')
+        self.network.send(payload)
+        print(f"Đã rời cuộc gọi nhóm {target}")
+
+    def handle_group_call_started(self, sender, group_name):
+        """Xử lý khi có cuộc gọi nhóm bắt đầu"""
+        if group_name not in self.joined_groups: return
+        
+        # Cập nhật danh sách active calls
+        if group_name not in self.active_group_calls:
+            self.active_group_calls.append(group_name)
+            
+        # Cập nhật UI nếu đang ở tab đó
+        if self.current_receiver == group_name and not self.is_calling:
+            self.btn_call.configure(text="📞 Join Call", fg_color=GREEN_COLOR, command=self.start_call)
+
+        # Nếu mình là người gọi thì bỏ qua thông báo
+        if sender == self.username: return
+
+        # Nếu đang ở trong cuộc gọi khác thì bỏ qua
+        if self.is_calling: return
+
+        # Hiện thông báo mời tham gia
+        ans = messagebox.askyesno("Cuộc gọi nhóm", f"{sender} đã bắt đầu cuộc gọi trong nhóm {group_name}. Tham gia ngay?")
+        if ans:
+            # Chuyển sang tab nhóm đó
+            self.switch_chat(group_name)
+            # Gọi hàm start_call (nó sẽ xử lý như join)
+            self.start_call()
+
+    def handle_group_call_ended(self, group_name):
+        """Xử lý khi cuộc gọi nhóm kết thúc (không còn ai)"""
+        if group_name in self.active_group_calls:
+            self.active_group_calls.remove(group_name)
+        
+        # Nếu mình đang ở trong cuộc gọi đó (trường hợp hiếm, ví dụ lag mạng)
+        if self.is_calling and self.call_target == group_name:
+            self.leave_group_call()
+            messagebox.showinfo("Call", f"Cuộc gọi nhóm {group_name} đã kết thúc.")
+
+        # Cập nhật UI nếu đang ở tab đó
+        if self.current_receiver == group_name:
+            self.btn_call.configure(text="📞 Call", fg_color=GREEN_COLOR, command=self.start_call)
+
     def end_call(self, notify=True):
-        """Kết thúc cuộc gọi"""
+        """Kết thúc cuộc gọi 1-1"""
         target = self.call_target if self.call_target else self.current_receiver
         self.is_calling = False
         self.call_target = None
@@ -420,7 +509,11 @@ class ChatWindow(ctk.CTkFrame):
         
         # Cập nhật trạng thái nút Call
         if self.is_calling and self.call_target == target:
-            self.btn_call.configure(text="📞 End", fg_color=RED_COLOR, command=self.end_call)
+            self.btn_call.configure(text="📞 Leave" if target in self.joined_groups else "📞 End", 
+                                    fg_color=RED_COLOR, 
+                                    command=self.leave_group_call if target in self.joined_groups else self.end_call)
+        elif target in self.active_group_calls:
+             self.btn_call.configure(text="📞 Join Call", fg_color=GREEN_COLOR, command=self.start_call)
         else:
             self.btn_call.configure(text="📞 Call", fg_color=GREEN_COLOR, command=self.start_call)
 
