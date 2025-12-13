@@ -190,7 +190,7 @@ class ChatWindow(ctk.CTkFrame):
         self.btn_send.pack(side="right", padx=10)
 
         # Tự động tạo frame ALL và load lịch sử
-        self._get_chat_frame("ALL")
+        self.switch_chat("ALL")
 
     # --- CALL FEATURE ---
     def start_call(self):
