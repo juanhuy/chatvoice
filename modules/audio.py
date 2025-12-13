@@ -13,6 +13,19 @@ class AudioManager:
         self.audio_queue = queue.Queue()
         self.is_playing_stream = False
         self.play_thread = None
+        
+        # --- MUTE / DEAFEN STATE ---
+        self.is_muted = False
+        self.is_deafened = False
+
+    def set_mute(self, muted):
+        self.is_muted = muted
+
+    def set_deafen(self, deafened):
+        self.is_deafened = deafened
+        # Deafen usually implies Mute too (can't speak if you can't hear?)
+        # But we will handle logic in UI or here. 
+        # For now, just flag it.
 
     def start_recording(self):
         self.is_recording = True
@@ -80,6 +93,12 @@ class AudioManager:
 
     def _stream_input_callback(self, indata, frames, time, status):
         if status: print(f"Stream status: {status}")
+        
+        # --- MUTE CHECK ---
+        if self.is_muted or self.is_deafened:
+            return # Don't send audio if muted or deafened
+        # ------------------
+
         if self.is_streaming and self.stream_callback:
             # --- VAD: Silence Suppression ---
             # Tính biên độ trung bình (RMS) của chunk
@@ -110,6 +129,12 @@ class AudioManager:
 
     def play_stream_chunk(self, data_bytes):
         """Thêm chunk vào hàng đợi để phát"""
+        
+        # --- DEAFEN CHECK ---
+        if self.is_deafened:
+            return # Don't play audio if deafened
+        # --------------------
+
         # --- LATENCY CONTROL: Drop old packets if queue is too full ---
         if self.audio_queue.qsize() > 10: # Nếu hàng đợi > 10 chunks (~200ms)
             try:

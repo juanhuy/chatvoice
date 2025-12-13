@@ -6,6 +6,7 @@ import os
 from datetime import datetime
 import winsound
 import json
+from ui.call_window import CallWindow
 
 # --- DISCORD COLOR PALETTE ---
 BG_PRIMARY = "#36393f"
@@ -32,6 +33,7 @@ class ChatWindow(ctk.CTkFrame):
         self.active_group_calls = [] # Danh sách các nhóm đang có cuộc gọi
         self.is_calling = False
         self.call_target = None
+        self.call_window = None # Store the popup window
 
         # Tạo thư mục lưu log nếu chưa có
         if not os.path.exists("chat_logs"):
@@ -220,6 +222,11 @@ class ChatWindow(ctk.CTkFrame):
             
             # Bắt đầu stream ngay
             self.start_streaming_audio(target)
+            
+            # --- OPEN CALL WINDOW ---
+            self.open_call_window(target, is_group=True)
+            # ------------------------
+            
             print(f"Đã tham gia cuộc gọi nhóm {target}")
             return
         # ------------------------
@@ -232,6 +239,20 @@ class ChatWindow(ctk.CTkFrame):
         self.network.send(payload)
         print(f"Đang gọi cho {target}...")
 
+    def open_call_window(self, target_name, is_group=False):
+        if self.call_window is not None:
+            try: self.call_window.destroy()
+            except: pass
+            
+        self.call_window = CallWindow(
+            self, 
+            name=target_name, 
+            is_group=is_group,
+            end_callback=self.leave_group_call if is_group else self.end_call,
+            mute_callback=self.audio.set_mute,
+            deafen_callback=self.audio.set_deafen
+        )
+
     def leave_group_call(self):
         """Rời cuộc gọi nhóm"""
         target = self.call_target
@@ -240,6 +261,12 @@ class ChatWindow(ctk.CTkFrame):
         self.is_calling = False
         self.call_target = None
         self.audio.stop_streaming()
+        
+        # Close popup
+        if self.call_window:
+            try: self.call_window.destroy()
+            except: pass
+            self.call_window = None
         
         # Reset nút Call nếu đang ở tab đó
         if self.current_receiver == target:
@@ -301,6 +328,12 @@ class ChatWindow(ctk.CTkFrame):
         self.call_target = None
         self.audio.stop_streaming()
         
+        # Close popup
+        if self.call_window:
+            try: self.call_window.destroy()
+            except: pass
+            self.call_window = None
+
         self.btn_call.configure(text="📞 Call", fg_color=GREEN_COLOR, command=self.start_call)
         
         if notify and target:
@@ -321,6 +354,10 @@ class ChatWindow(ctk.CTkFrame):
             # Bắt đầu stream
             self.start_streaming_audio(sender)
             
+            # --- OPEN CALL WINDOW ---
+            self.open_call_window(sender, is_group=False)
+            # ------------------------
+
             # Đổi trạng thái nút Call (nếu đang ở tab người đó)
             if self.current_receiver == sender:
                 self.btn_call.configure(text="📞 End", fg_color=RED_COLOR, command=self.end_call)
@@ -334,6 +371,10 @@ class ChatWindow(ctk.CTkFrame):
         if response_type == "CALL_ACCEPT":
             messagebox.showinfo("Call", f"{sender} đã chấp nhận cuộc gọi!")
             self.start_streaming_audio(sender)
+            
+            # --- OPEN CALL WINDOW ---
+            self.open_call_window(sender, is_group=False)
+            # ------------------------
             
         elif response_type == "CALL_REJECT":
             self.end_call(notify=False) # Reset UI

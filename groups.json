@@ -59,5 +59,13 @@
             "huy"
         ],
         "admin": "chi"
+    },
+    "oklaaaaa": {
+        "members": [
+            "huy",
+            "chi",
+            "phuoc"
+        ],
+        "admin": "phuoc"
     }
 }
