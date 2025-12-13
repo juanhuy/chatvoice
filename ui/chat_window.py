@@ -29,6 +29,7 @@ class ChatWindow(ctk.CTkFrame):
         self.frames_store = {}
         self.online_users = [] 
         self.joined_groups = [] 
+        self.active_group_calls = [] # Danh sách các nhóm đang có cuộc gọi
         self.is_calling = False
         self.call_target = None
 
@@ -42,6 +43,7 @@ class ChatWindow(ctk.CTkFrame):
         # === LAYOUT CHÍNH ===
         self.grid_columnconfigure(0, weight=0, minsize=260)
         self.grid_columnconfigure(1, weight=1)
+        self.grid_columnconfigure(2, weight=0) # Sidebar phải (ẩn mặc định)
         self.grid_rowconfigure(0, weight=1)
 
         # === SIDEBAR TRÁI ===
@@ -110,12 +112,52 @@ class ChatWindow(ctk.CTkFrame):
                                              font=("gg sans", 16, "bold"), text_color="white", anchor="w")
         self.lbl_header_title.pack(side="left", padx=20, pady=15)
 
+        # Container cho các nút bên phải
+        self.header_btn_frame = ctk.CTkFrame(self.chat_header, fg_color="transparent")
+        self.header_btn_frame.pack(side="right", padx=10, pady=10)
+
         # Nút Call
-        self.btn_call = ctk.CTkButton(self.chat_header, text="📞 Call", width=60, fg_color=GREEN_COLOR, 
+        self.btn_call = ctk.CTkButton(self.header_btn_frame, text="📞 Call", width=60, fg_color=GREEN_COLOR, 
                                       hover_color=HOVER_COLOR, command=self.start_call)
-        self.btn_call.pack(side="right", padx=20, pady=10)
+        self.btn_call.pack(side="left", padx=5)
+
+        # Nút Info (Mới)
+        self.btn_info = ctk.CTkButton(self.header_btn_frame, text="Info", width=50, fg_color="#2f3136", 
+                                      hover_color=HOVER_COLOR, command=self.toggle_right_sidebar)
+        self.btn_info.pack(side="left", padx=5)
 
         ctk.CTkFrame(self.main_area, height=1, fg_color="#202225").grid(row=0, column=0, sticky="ews")
+
+        # === SIDEBAR PHẢI (INFO PANEL) ===
+        self.right_sidebar = ctk.CTkFrame(self, fg_color=BG_SECONDARY, corner_radius=0, width=240)
+        self.right_sidebar.grid_propagate(False)
+        # Mặc định ẩn, sẽ grid() khi toggle
+
+        # Nội dung Sidebar Phải
+        self.info_header = ctk.CTkLabel(self.right_sidebar, text="THÔNG TIN NHÓM", 
+                                        font=("gg sans", 14, "bold"), text_color="white")
+        self.info_header.pack(pady=20)
+        
+        self.member_list_frame = ctk.CTkScrollableFrame(self.right_sidebar, fg_color="transparent")
+        self.member_list_frame.pack(fill="both", expand=True, padx=10)
+        
+        self.add_member_frame = ctk.CTkFrame(self.right_sidebar, fg_color="transparent")
+        self.add_member_frame.pack(fill="x", padx=10, pady=20)
+        
+        # Thay Entry bằng ComboBox để search/chọn thành viên
+        self.cbo_add_member = ctk.CTkComboBox(self.add_member_frame, values=[], height=30,
+                                              fg_color=INPUT_BG, border_color=INPUT_BG,
+                                              button_color=INPUT_BG, button_hover_color=HOVER_COLOR,
+                                              dropdown_fg_color=BG_SECONDARY, dropdown_text_color="white",
+                                              text_color="white", state="readonly")
+        self.cbo_add_member.set("Chọn thành viên...")
+        self.cbo_add_member.pack(fill="x", pady=(0, 5))
+        
+        # Khi click vào combobox (hoặc focus), ta sẽ request list user mới nhất
+        # Tuy nhiên CTkComboBox không có event <FocusIn> dễ dàng, ta sẽ request khi mở Info Panel
+        
+        ctk.CTkButton(self.add_member_frame, text="Thêm", fg_color=ACCENT_COLOR, height=30,
+                      command=self.add_member_action).pack(fill="x")
 
         # Chat Log
         self.chat_scroll = ctk.CTkScrollableFrame(self.main_area, fg_color=BG_PRIMARY)
@@ -156,16 +198,104 @@ class ChatWindow(ctk.CTkFrame):
             messagebox.showwarning("Call", "Không thể gọi cho kênh chung!")
             return
         
+        # --- GROUP CALL LOGIC ---
+        if target in self.joined_groups:
+            # Nếu đang trong cuộc gọi nhóm này rồi thì không làm gì
+            if self.is_calling and self.call_target == target:
+                return
+            
+            # Bắt đầu cuộc gọi nhóm
+            self.is_calling = True
+            self.call_target = target
+            self.btn_call.configure(text="📞 Leave", fg_color=RED_COLOR, command=self.leave_group_call)
+            
+            # Gửi lệnh Start (hoặc Join)
+            if target in self.active_group_calls:
+                payload = f"GROUP_CALL_JOIN::{self.username}::{target}".encode('utf-8')
+            else:
+                payload = f"GROUP_CALL_START::{self.username}::{target}".encode('utf-8')
+                self.active_group_calls.append(target)
+                
+            self.network.send(payload)
+            
+            # Bắt đầu stream ngay
+            self.start_streaming_audio(target)
+            print(f"Đã tham gia cuộc gọi nhóm {target}")
+            return
+        # ------------------------
+        
         self.is_calling = True
         self.btn_call.configure(text="📞 End", fg_color=RED_COLOR, command=self.end_call)
         
-        # Gửi yêu cầu gọi
+        # Gửi yêu cầu gọi 1-1
         payload = f"CALL_REQUEST::{self.username}::{target}".encode('utf-8')
         self.network.send(payload)
         print(f"Đang gọi cho {target}...")
 
+    def leave_group_call(self):
+        """Rời cuộc gọi nhóm"""
+        target = self.call_target
+        if not target: return
+
+        self.is_calling = False
+        self.call_target = None
+        self.audio.stop_streaming()
+        
+        # Reset nút Call nếu đang ở tab đó
+        if self.current_receiver == target:
+            # Nếu vẫn còn người trong call (logic này client chưa biết chính xác, nhưng cứ hiện Join Call nếu còn trong active list)
+            if target in self.active_group_calls:
+                self.btn_call.configure(text="📞 Join Call", fg_color=GREEN_COLOR, command=self.start_call)
+            else:
+                self.btn_call.configure(text="📞 Call", fg_color=GREEN_COLOR, command=self.start_call)
+            
+        # Gửi lệnh Leave
+        payload = f"GROUP_CALL_LEAVE::{self.username}::{target}".encode('utf-8')
+        self.network.send(payload)
+        print(f"Đã rời cuộc gọi nhóm {target}")
+
+    def handle_group_call_started(self, sender, group_name):
+        """Xử lý khi có cuộc gọi nhóm bắt đầu"""
+        if group_name not in self.joined_groups: return
+        
+        # Cập nhật danh sách active calls
+        if group_name not in self.active_group_calls:
+            self.active_group_calls.append(group_name)
+            
+        # Cập nhật UI nếu đang ở tab đó
+        if self.current_receiver == group_name and not self.is_calling:
+            self.btn_call.configure(text="📞 Join Call", fg_color=GREEN_COLOR, command=self.start_call)
+
+        # Nếu mình là người gọi thì bỏ qua thông báo
+        if sender == self.username: return
+
+        # Nếu đang ở trong cuộc gọi khác thì bỏ qua
+        if self.is_calling: return
+
+        # Hiện thông báo mời tham gia
+        ans = messagebox.askyesno("Cuộc gọi nhóm", f"{sender} đã bắt đầu cuộc gọi trong nhóm {group_name}. Tham gia ngay?")
+        if ans:
+            # Chuyển sang tab nhóm đó
+            self.switch_chat(group_name)
+            # Gọi hàm start_call (nó sẽ xử lý như join)
+            self.start_call()
+
+    def handle_group_call_ended(self, group_name):
+        """Xử lý khi cuộc gọi nhóm kết thúc (không còn ai)"""
+        if group_name in self.active_group_calls:
+            self.active_group_calls.remove(group_name)
+        
+        # Nếu mình đang ở trong cuộc gọi đó (trường hợp hiếm, ví dụ lag mạng)
+        if self.is_calling and self.call_target == group_name:
+            self.leave_group_call()
+            messagebox.showinfo("Call", f"Cuộc gọi nhóm {group_name} đã kết thúc.")
+
+        # Cập nhật UI nếu đang ở tab đó
+        if self.current_receiver == group_name:
+            self.btn_call.configure(text="📞 Call", fg_color=GREEN_COLOR, command=self.start_call)
+
     def end_call(self, notify=True):
-        """Kết thúc cuộc gọi"""
+        """Kết thúc cuộc gọi 1-1"""
         target = self.call_target if self.call_target else self.current_receiver
         self.is_calling = False
         self.call_target = None
@@ -343,36 +473,64 @@ class ChatWindow(ctk.CTkFrame):
 
     # --- CÁC HÀM KHÁC (GIỮ NGUYÊN) ---
     def open_create_group_dialog(self):
-        dialog = ctk.CTkToplevel(self)
-        dialog.title("Tạo nhóm mới")
-        dialog.geometry("300x400")
-        dialog.attributes("-topmost", True)
-        ctk.CTkLabel(dialog, text="Tên nhóm:", font=("Arial", 12, "bold")).pack(pady=5)
-        name_entry = ctk.CTkEntry(dialog, placeholder_text="Ví dụ: Team AOV")
+        self.create_grp_dialog = ctk.CTkToplevel(self)
+        self.create_grp_dialog.title("Tạo nhóm mới")
+        self.create_grp_dialog.geometry("300x400")
+        self.create_grp_dialog.attributes("-topmost", True)
+        
+        ctk.CTkLabel(self.create_grp_dialog, text="Tên nhóm:", font=("Arial", 12, "bold")).pack(pady=5)
+        name_entry = ctk.CTkEntry(self.create_grp_dialog, placeholder_text="Ví dụ: Team AOV")
         name_entry.pack(fill="x", padx=20, pady=5)
-        ctk.CTkLabel(dialog, text="Chọn thành viên:", font=("Arial", 12, "bold")).pack(pady=5)
-        scroll = ctk.CTkScrollableFrame(dialog)
-        scroll.pack(fill="both", expand=True, padx=10, pady=5)
-        selected_users = {}
-        for user in self.online_users:
-            if user != self.username:
-                var = ctk.IntVar()
-                chk = ctk.CTkCheckBox(scroll, text=user, variable=var)
-                chk.pack(anchor="w", pady=2)
-                selected_users[user] = var
+        
+        ctk.CTkLabel(self.create_grp_dialog, text="Chọn thành viên:", font=("Arial", 12, "bold")).pack(pady=5)
+        
+        # Scroll frame để chứa checkbox
+        self.create_grp_scroll = ctk.CTkScrollableFrame(self.create_grp_dialog)
+        self.create_grp_scroll.pack(fill="both", expand=True, padx=10, pady=5)
+        
+        # Dictionary lưu biến checkbox
+        self.create_grp_vars = {} 
+
+        # Gửi yêu cầu lấy danh sách user để hiển thị
+        self.network.send(b"GET_ALL_USERS")
+        
         def create_action():
             group_name = name_entry.get().strip()
             if not group_name:
                 messagebox.showwarning("Lỗi", "Vui lòng nhập tên nhóm!")
                 return
-            members = [u for u, v in selected_users.items() if v.get() == 1]
-            members.append(self.username)
+            
+            # Lấy danh sách user được chọn
+            members = [u for u, v in self.create_grp_vars.items() if v.get() == 1]
+            members.append(self.username) # Thêm chính mình
+            
             members_str = ",".join(members)
             payload = f"GROUP_CREATE::{group_name}::{members_str}".encode('utf-8')
             self.network.send(payload)
             self.add_group_to_list(group_name)
-            dialog.destroy()
-        ctk.CTkButton(dialog, text="Tạo nhóm", command=create_action, fg_color=ACCENT_COLOR).pack(pady=10)
+            self.create_grp_dialog.destroy()
+            self.create_grp_dialog = None
+            
+        ctk.CTkButton(self.create_grp_dialog, text="Tạo nhóm", command=create_action, fg_color=ACCENT_COLOR).pack(pady=10)
+
+    def update_create_group_list(self, users_str):
+        """Cập nhật danh sách user trong dialog tạo nhóm"""
+        if not hasattr(self, 'create_grp_dialog') or self.create_grp_dialog is None or not self.create_grp_dialog.winfo_exists():
+            return
+
+        # Xóa cũ
+        for widget in self.create_grp_scroll.winfo_children():
+            widget.destroy()
+        self.create_grp_vars = {}
+
+        all_users = users_str.split(",") if users_str else []
+        
+        for user in all_users:
+            if user != self.username:
+                var = ctk.IntVar()
+                chk = ctk.CTkCheckBox(self.create_grp_scroll, text=user, variable=var)
+                chk.pack(anchor="w", pady=2)
+                self.create_grp_vars[user] = var
 
     def add_group_to_list(self, group_name):
         if group_name not in self.joined_groups:
@@ -420,9 +578,23 @@ class ChatWindow(ctk.CTkFrame):
         
         # Cập nhật trạng thái nút Call
         if self.is_calling and self.call_target == target:
-            self.btn_call.configure(text="📞 End", fg_color=RED_COLOR, command=self.end_call)
+            self.btn_call.configure(text="📞 Leave" if target in self.joined_groups else "📞 End", 
+                                    fg_color=RED_COLOR, 
+                                    command=self.leave_group_call if target in self.joined_groups else self.end_call)
+        elif target in self.active_group_calls:
+             self.btn_call.configure(text="📞 Join Call", fg_color=GREEN_COLOR, command=self.start_call)
         else:
             self.btn_call.configure(text="📞 Call", fg_color=GREEN_COLOR, command=self.start_call)
+
+        # Ẩn/Hiện nút Info (Chỉ hiện cho Group)
+        if target in self.joined_groups:
+            self.btn_info.pack(side="left", padx=5)
+            # Nếu sidebar đang mở thì cập nhật nội dung
+            if self.right_sidebar.winfo_viewable():
+                self.update_group_info(target)
+        else:
+            self.btn_info.pack_forget()
+            self.right_sidebar.grid_forget() # Ẩn sidebar nếu không phải group
 
         self.btn_general.configure(fg_color="#393c43" if target == "ALL" else "transparent")
         for container in [self.group_container, self.dm_container]:
@@ -434,6 +606,117 @@ class ChatWindow(ctk.CTkFrame):
         # Đảm bảo load history tại thời điểm này
         frame = self._get_chat_frame(target)
         frame.pack(fill="both", expand=True)
+
+    def toggle_right_sidebar(self):
+        if self.right_sidebar.winfo_viewable():
+            self.right_sidebar.grid_forget()
+        else:
+            self.right_sidebar.grid(row=0, column=2, sticky="nsew")
+            self.update_group_info(self.current_receiver)
+
+    def update_group_info(self, group_name):
+        # Gửi yêu cầu lấy danh sách thành viên
+        self.network.send(f"GROUP_GET_MEMBERS::{group_name}".encode('utf-8'))
+        # Gửi yêu cầu lấy danh sách TẤT CẢ user để nạp vào combobox
+        self.network.send(b"GET_ALL_USERS")
+
+    def update_all_users_combo(self, users_str):
+        """Cập nhật danh sách user vào combobox thêm thành viên VÀ dialog tạo nhóm"""
+        
+        # 1. Cập nhật Dialog Tạo Nhóm (nếu đang mở)
+        self.update_create_group_list(users_str)
+
+        # 2. Cập nhật ComboBox Add Member (như cũ)
+        all_users = users_str.split(",") if users_str else []
+        
+        # Lấy danh sách thành viên hiện tại của nhóm (để loại trừ)
+        current_members = getattr(self, "current_group_members", [])
+        
+        available_users = [u for u in all_users if u not in current_members]
+        
+        if available_users:
+            self.cbo_add_member.configure(values=available_users)
+            self.cbo_add_member.set(available_users[0])
+        else:
+            self.cbo_add_member.configure(values=["(Trống)"])
+            self.cbo_add_member.set("(Trống)")
+
+    def display_group_members(self, group_name, members_str, admin_name=""):
+        if self.current_receiver != group_name: return
+        
+        # Lưu lại danh sách thành viên để dùng cho việc lọc combobox
+        members = members_str.split(",")
+        self.current_group_members = members
+        
+        # Xóa cũ
+        for widget in self.member_list_frame.winfo_children():
+            widget.destroy()
+            
+        ctk.CTkLabel(self.member_list_frame, text=f"THÀNH VIÊN - {len(members)}", 
+                     font=("gg sans", 11, "bold"), text_color=TIMESTAMP_COLOR, anchor="w").pack(fill="x", pady=(0, 10))
+        
+        is_admin = (self.username == admin_name)
+
+        # --- HIỆN/ẨN KHUNG THÊM THÀNH VIÊN ---
+        if is_admin:
+            self.add_member_frame.pack(fill="x", padx=10, pady=20)
+        else:
+            self.add_member_frame.pack_forget()
+        # -------------------------------------
+
+        for mem in members:
+            row = ctk.CTkFrame(self.member_list_frame, fg_color="transparent")
+            row.pack(fill="x", pady=2)
+            
+            # Avatar giả
+            ctk.CTkButton(row, text=mem[:2].upper(), width=30, height=30, fg_color=GREEN_COLOR, 
+                          corner_radius=15, hover=False, font=("Arial", 10, "bold")).pack(side="left", padx=(0, 10))
+            
+            # Tên + (Admin) nếu là admin
+            display_name = mem
+            if mem == admin_name:
+                display_name += " 👑"
+            
+            ctk.CTkLabel(row, text=display_name, font=("gg sans", 13), text_color="white").pack(side="left")
+
+            # Nút xóa (chỉ hiện nếu mình là admin và không phải xóa chính mình)
+            if is_admin and mem != self.username:
+                ctk.CTkButton(row, text="❌", width=25, height=25, fg_color="transparent", hover_color=RED_COLOR,
+                              command=lambda m=mem: self.remove_member_action(m)).pack(side="right")
+        
+        # --- NÚT GIẢI TÁN NHÓM (CHO ADMIN) ---
+        if is_admin:
+            ctk.CTkFrame(self.member_list_frame, height=1, fg_color="#202225").pack(fill="x", pady=10)
+            ctk.CTkButton(self.member_list_frame, text="⚠️ Giải tán nhóm", fg_color="transparent", 
+                          border_width=1, border_color=RED_COLOR, text_color=RED_COLOR, hover_color=RED_COLOR,
+                          command=self.delete_group_action).pack(fill="x", pady=5)
+        # -------------------------------------
+
+        # --- REFRESH COMBOBOX ---
+        # Khi danh sách thành viên thay đổi, ta cần cập nhật lại dropdown để loại bỏ người vừa thêm
+        self.network.send(b"GET_ALL_USERS")
+        # ------------------------
+
+    def delete_group_action(self):
+        ans = messagebox.askyesno("Cảnh báo", f"Bạn có chắc muốn giải tán nhóm {self.current_receiver}?\nHành động này không thể hoàn tác!")
+        if ans:
+            payload = f"GROUP_DELETE::{self.current_receiver}".encode('utf-8')
+            self.network.send(payload)
+
+    def remove_member_action(self, member_name):
+        ans = messagebox.askyesno("Xóa thành viên", f"Bạn có chắc muốn xóa {member_name} khỏi nhóm?")
+        if ans:
+            payload = f"GROUP_REMOVE_MEMBER::{self.current_receiver}::{member_name}".encode('utf-8')
+            self.network.send(payload)
+
+    def add_member_action(self):
+        new_mem = self.cbo_add_member.get()
+        if not new_mem or new_mem == "(Trống)" or new_mem == "Chọn thành viên...": return
+        
+        # Gửi yêu cầu thêm thành viên
+        payload = f"GROUP_ADD_MEMBER::{self.current_receiver}::{new_mem}".encode('utf-8')
+        self.network.send(payload)
+        self.cbo_add_member.set("Chọn thành viên...")
 
     def send_text(self, event=None):
         text = self.msg_entry.get().strip()
@@ -482,3 +765,33 @@ class ChatWindow(ctk.CTkFrame):
 
     def on_group_created(self, group_name):
         self.add_group_to_list(group_name)
+
+    def on_group_removed(self, group_name):
+        if group_name in self.joined_groups:
+            self.joined_groups.remove(group_name)
+            
+            # Remove button from UI
+            for btn in self.group_container.winfo_children():
+                if btn.cget("text") == f"🛡️ {group_name}":
+                    btn.destroy()
+                    break
+            
+            # If currently viewing this group, switch to ALL
+            if self.current_receiver == group_name:
+                self.switch_chat("ALL")
+                messagebox.showinfo("Thông báo", f"Bạn đã bị xóa khỏi nhóm {group_name}.")
+
+    def on_group_deleted(self, group_name):
+        if group_name in self.joined_groups:
+            self.joined_groups.remove(group_name)
+            
+            # Remove button from UI
+            for btn in self.group_container.winfo_children():
+                if btn.cget("text") == f"🛡️ {group_name}":
+                    btn.destroy()
+                    break
+            
+            # If currently viewing this group, switch to ALL
+            if self.current_receiver == group_name:
+                self.switch_chat("ALL")
+                messagebox.showwarning("Thông báo", f"Nhóm {group_name} đã bị giải tán bởi Admin.")

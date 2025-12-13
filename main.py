@@ -43,6 +43,13 @@ class MainApp(ctk.CTk):
         else:
             messagebox.showerror("Đăng nhập thất bại", f"Lỗi từ Server:\n{result}")
 
+    def register_user(self, ip, user, pwd):
+        result = self.network.register(ip, user, pwd)
+        if result == "OK":
+            messagebox.showinfo("Thành công", "Đăng ký thành công! Bạn có thể đăng nhập ngay.")
+        else:
+            messagebox.showerror("Thất bại", f"Đăng ký thất bại:\n{result}")
+
     def on_data_received(self, data):
         # Hàm callback xử lý dữ liệu từ Network gửi về
         try:
@@ -59,6 +66,16 @@ class MainApp(ctk.CTk):
             elif data.startswith(b"GROUP_ADDED::"):
                 group_name = data.decode().split("::")[1]
                 self.chat_ui.after(0, lambda: self.chat_ui.on_group_created(group_name))
+
+            # 2b. Xử lý khi bị xóa khỏi NHÓM (Mới)
+            elif data.startswith(b"GROUP_REMOVED::"):
+                group_name = data.decode().split("::")[1]
+                self.chat_ui.after(0, lambda: self.chat_ui.on_group_removed(group_name))
+
+            # 2c. Xử lý khi NHÓM BỊ GIẢI TÁN (Mới)
+            elif data.startswith(b"GROUP_DELETED::"):
+                group_name = data.decode().split("::")[1]
+                self.chat_ui.after(0, lambda: self.chat_ui.on_group_deleted(group_name))
                 
             # 3. Xử lý Tin nhắn văn bản
             elif data.startswith(b"TEXTMSG::"):
@@ -150,6 +167,31 @@ class MainApp(ctk.CTk):
                 if len(parts) == 4:
                     audio_data = parts[3]
                     self.audio.play_stream_chunk(audio_data)
+
+            # 9. Xử lý Group Call Started
+            elif data.startswith(b"GROUP_CALL_STARTED::"):
+                parts = data.decode().split("::")
+                sender = parts[1]
+                group_name = parts[2]
+                self.chat_ui.after(0, lambda: self.chat_ui.handle_group_call_started(sender, group_name))
+
+            # 10. Xử lý Group Call Ended
+            elif data.startswith(b"GROUP_CALL_ENDED::"):
+                group_name = data.decode().split("::")[1]
+                self.chat_ui.after(0, lambda: self.chat_ui.handle_group_call_ended(group_name))
+
+            # 11. Xử lý Group Members List
+            elif data.startswith(b"GROUP_MEMBERS::"):
+                parts = data.decode().split("::")
+                group_name = parts[1]
+                members_str = parts[2]
+                admin_name = parts[3] if len(parts) > 3 else ""
+                self.chat_ui.after(0, lambda: self.chat_ui.display_group_members(group_name, members_str, admin_name))
+
+            # 12. Xử lý All Users List (cho tính năng Add Member)
+            elif data.startswith(b"ALL_USERS::"):
+                users_str = data.decode().split("::")[1]
+                self.chat_ui.after(0, lambda: self.chat_ui.update_all_users_combo(users_str))
 
         except Exception as e:
             print(f"Error parsing data: {e}")

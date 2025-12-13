@@ -44,6 +44,32 @@ class NetworkClient:
             if self.client: self.client.close()
             return f"Lỗi kết nối: {str(e)}"
 
+    def register(self, ip, username, password):
+        try:
+            client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client.settimeout(3)
+            client.connect((ip, PORT))
+            
+            payload = f"REGISTER::{username}::{password}".encode('utf-8')
+            header = f"{len(payload):<{HEADER_SIZE}}".encode('utf-8')
+            client.sendall(header + payload)
+            
+            resp_header = client.recv(HEADER_SIZE)
+            if not resp_header: return "Mất kết nối"
+            
+            msg_len = int(resp_header.decode().strip())
+            response = client.recv(msg_len).decode()
+            
+            client.close()
+            
+            if response == "REGISTER_OK": return "OK"
+            elif response.startswith("REGISTER_FAIL"):
+                return response.split("::")[1]
+            else: return "Lỗi không xác định"
+            
+        except Exception as e:
+            return f"Lỗi: {str(e)}"
+
     def send(self, data):
         if not self.connected: return
         try:

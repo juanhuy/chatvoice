@@ -9,3 +9,5 @@ HEADER_SIZE = 10   # Độ dài header gói tin
 CHUNK = 1024
 SAMPLE_RATE = 44100
 CHANNELS = 1
+SILENCE_THRESHOLD = 500 # Ngưỡng lọc âm (0-32767), dưới mức này coi là im lặng
+CHANNELS = 1
