@@ -1,10 +1,10 @@
 {
-    "aov": [
-        "huy",
-        "admin"
-    ],
-    "lien quan mobile": [
-        "huy",
-        "admin"
-    ]
+    "teamvn": {
+        "members": [
+            "phuoc",
+            "chi",
+            "phu"
+        ],
+        "admin": "phu"
+    }
 }

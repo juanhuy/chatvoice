@@ -43,6 +43,20 @@ class MainApp(ctk.CTk):
         else:
             messagebox.showerror("Đăng nhập thất bại", f"Lỗi từ Server:\n{result}")
 
+    def register_user(self, ip, user, pwd):
+        result = self.network.register(ip, user, pwd)
+        if result == "OK":
+            messagebox.showinfo("Thành công", "Đăng ký thành công! Bạn có thể đăng nhập ngay.")
+        else:
+            messagebox.showerror("Thất bại", f"Đăng ký thất bại:\n{result}")
+
+    def send_ack(self, msg_id):
+        try:
+            self.network.send(f"ACK::{msg_id}".encode())
+        except Exception as e:
+            print("ACK error:", e)
+
+
     def on_data_received(self, data):
         # Hàm callback xử lý dữ liệu từ Network gửi về
         try:
@@ -59,12 +73,25 @@ class MainApp(ctk.CTk):
             elif data.startswith(b"GROUP_ADDED::"):
                 group_name = data.decode().split("::")[1]
                 self.chat_ui.after(0, lambda: self.chat_ui.on_group_created(group_name))
+
+            # 2b. Xử lý khi bị xóa khỏi NHÓM (Mới)
+            elif data.startswith(b"GROUP_REMOVED::"):
+                group_name = data.decode().split("::")[1]
+                self.chat_ui.after(0, lambda: self.chat_ui.on_group_removed(group_name))
+
+            # 2c. Xử lý khi NHÓM BỊ GIẢI TÁN (Mới)
+            elif data.startswith(b"GROUP_DELETED::"):
+                group_name = data.decode().split("::")[1]
+                self.chat_ui.after(0, lambda: self.chat_ui.on_group_deleted(group_name))
                 
             # 3. Xử lý Tin nhắn văn bản
             elif data.startswith(b"TEXTMSG::"):
-                parts = data.decode().split("::", 3)
-                if len(parts) == 4:
-                    sender, receiver, msg = parts[1], parts[2], parts[3]
+                parts = data.decode(errors="ignore").split("::", 4)
+                if len(parts) == 5:
+                    msg_id  = parts[1]
+                    sender  = parts[2]
+                    receiver= parts[3]
+                    msg     = parts[4]
                     
                     # Logic xác định Tab hiển thị:
                     # - Nếu receiver là ALL -> Tab ALL
@@ -80,36 +107,103 @@ class MainApp(ctk.CTk):
                         target_tab = receiver  # Chat riêng với người khác
                         
                     self.chat_ui.after(0, lambda: self.chat_ui.display_msg(sender, msg, target_tab))
-                
+                    self.send_ack(msg_id)        
+
             # 4. Xử lý Tin nhắn thoại
             elif data.startswith(b"VOICEMSG::"):
-                parts = data.split(b"::", 3)
-                if len(parts) == 4:
-                    sender, receiver, audio = parts[1].decode(), parts[2].decode(), parts[3]
+                parts = data.split(b"::", 4)
+                if len(parts) != 5:
+                    return
+                msg_id   = parts[1].decode(errors="ignore")
+                sender   = parts[2].decode(errors="ignore")
+                receiver = parts[3].decode(errors="ignore")
+                audio    = parts[4]   # bytes – KHÔNG decode
+                # if len(parts) == 4:
+                #     sender, receiver, audio = parts[1].decode(), parts[2].decode(), parts[3]
                     
-                    if receiver == "ALL":
-                        target_tab = "ALL"
-                    elif self.chat_ui and receiver in self.chat_ui.joined_groups:
-                        target_tab = receiver
-                    elif receiver == self.chat_ui.username:  # Voice riêng cho mình
-                        target_tab = sender
-                    else:
-                        target_tab = receiver  # Voice riêng với người khác
+                    # if receiver == "ALL":
+                    #     target_tab = "ALL"
+                    # elif self.chat_ui and receiver in self.chat_ui.joined_groups:
+                    #     target_tab = receiver
+                    # elif receiver == self.chat_ui.username:  # Voice riêng cho mình
+                    #     target_tab = sender
+                    # else:
+                    #     target_tab = receiver  # Voice riêng với người khác
                     
-                    self.chat_ui.after(0, lambda: self.chat_ui.display_msg(sender, audio, target_tab, True))
+                    # self.chat_ui.after(0, lambda: self.chat_ui.display_msg(sender, audio, target_tab, True))
+                if receiver == "ALL":
+                    target_tab = "ALL"
+                elif self.chat_ui and receiver in self.chat_ui.joined_groups:
+                    target_tab = receiver
+                elif receiver == self.chat_ui.username:
+                    target_tab = sender
+                else:
+                    target_tab = receiver
 
+                self.chat_ui.after(
+                    0,
+                    lambda: self.chat_ui.display_msg(sender, audio, target_tab, True)
+                )
+                self.send_ack(msg_id)
             # 5. Xử lý File
             elif data.startswith(b"FILE::"):
                 parts = data.split(b"::", 4)
                 if len(parts) == 5:
-                    sender, receiver, fname = parts[1].decode(), parts[2].decode(), parts[3].decode()
-                    
+                    msg_id  = parts[1]
+                    sender  = parts[2]
+                    receiver= parts[3]
+                    fname   = parts[4]
                     if receiver == "ALL": target_tab = "ALL"
                     elif self.chat_ui and receiver in self.chat_ui.joined_groups: target_tab = receiver
                     elif receiver == self.chat_ui.username: target_tab = sender
                     else: target_tab = receiver
                     
                     self.chat_ui.after(0, lambda: self.chat_ui.display_msg(sender, f"[Nhận file] {fname}", target_tab))
+                    self.send_ack(msg_id)
+
+            # 6. Xử lý Call Request
+            elif data.startswith(b"CALL_REQUEST::"):
+                sender = data.decode().split("::")[1]
+                self.chat_ui.after(0, lambda: self.chat_ui.handle_call_request(sender))
+
+            # 7. Xử lý Call Response (Accept/Reject/End)
+            elif any(data.startswith(prefix) for prefix in [b"CALL_ACCEPT::", b"CALL_REJECT::", b"CALL_END::"]):
+                parts = data.decode().split("::")
+                msg_type = parts[0]
+                sender = parts[1]
+                self.chat_ui.after(0, lambda: self.chat_ui.handle_call_response(msg_type, sender))
+
+            # 8. Xử lý Audio Stream
+            elif data.startswith(b"AUDIO_STREAM::"):
+                parts = data.split(b"::", 3)
+                if len(parts) == 4:
+                    audio_data = parts[3]
+                    self.audio.play_stream_chunk(audio_data)
+
+            # 9. Xử lý Group Call Started
+            elif data.startswith(b"GROUP_CALL_STARTED::"):
+                parts = data.decode().split("::")
+                sender = parts[1]
+                group_name = parts[2]
+                self.chat_ui.after(0, lambda: self.chat_ui.handle_group_call_started(sender, group_name))
+
+            # 10. Xử lý Group Call Ended
+            elif data.startswith(b"GROUP_CALL_ENDED::"):
+                group_name = data.decode().split("::")[1]
+                self.chat_ui.after(0, lambda: self.chat_ui.handle_group_call_ended(group_name))
+
+            # 11. Xử lý Group Members List
+            elif data.startswith(b"GROUP_MEMBERS::"):
+                parts = data.decode().split("::")
+                group_name = parts[1]
+                members_str = parts[2]
+                admin_name = parts[3] if len(parts) > 3 else ""
+                self.chat_ui.after(0, lambda: self.chat_ui.display_group_members(group_name, members_str, admin_name))
+
+            # 12. Xử lý All Users List (cho tính năng Add Member)
+            elif data.startswith(b"ALL_USERS::"):
+                users_str = data.decode().split("::")[1]
+                self.chat_ui.after(0, lambda: self.chat_ui.update_all_users_combo(users_str))
 
         except Exception as e:
             print(f"Error parsing data: {e}")
