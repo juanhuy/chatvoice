@@ -624,24 +624,30 @@ class ChatWindow(ctk.CTkFrame):
         self.lbl_header_title.configure(text=f"{icon} {target}")
         self.msg_entry.configure(placeholder_text=f"Gửi đến {target}")
         
-        # Cập nhật trạng thái nút Call
-        if self.is_calling and self.call_target == target:
-            self.btn_call.configure(text="📞 Leave" if target in self.joined_groups else "📞 End", 
-                                    fg_color=RED_COLOR, 
-                                    command=self.leave_group_call if target in self.joined_groups else self.end_call)
-        elif target in self.active_group_calls:
-             self.btn_call.configure(text="📞 Join Call", fg_color=GREEN_COLOR, command=self.start_call)
-        else:
-            self.btn_call.configure(text="📞 Call", fg_color=GREEN_COLOR, command=self.start_call)
+        # Reset các nút trên header
+        self.btn_call.pack_forget()
+        self.btn_info.pack_forget()
 
-        # Ẩn/Hiện nút Info (Chỉ hiện cho Group)
+        # 1. Nút Call (Hiện cho tất cả trừ ALL)
+        if target != "ALL":
+            self.btn_call.pack(side="left", padx=5)
+            
+            if self.is_calling and self.call_target == target:
+                self.btn_call.configure(text="📞 Leave" if target in self.joined_groups else "📞 End", 
+                                        fg_color=RED_COLOR, 
+                                        command=self.leave_group_call if target in self.joined_groups else self.end_call)
+            elif target in self.active_group_calls:
+                 self.btn_call.configure(text="📞 Join Call", fg_color=GREEN_COLOR, command=self.start_call)
+            else:
+                self.btn_call.configure(text="📞 Call", fg_color=GREEN_COLOR, command=self.start_call)
+
+        # 2. Nút Info (Chỉ hiện cho Group)
         if target in self.joined_groups:
             self.btn_info.pack(side="left", padx=5)
             # Nếu sidebar đang mở thì cập nhật nội dung
             if self.right_sidebar.winfo_viewable():
                 self.update_group_info(target)
         else:
-            self.btn_info.pack_forget()
             self.right_sidebar.grid_forget() # Ẩn sidebar nếu không phải group
 
         self.btn_general.configure(fg_color="#393c43" if target == "ALL" else "transparent")
