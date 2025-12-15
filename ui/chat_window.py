@@ -500,7 +500,12 @@ class ChatWindow(ctk.CTkFrame):
             ctk.CTkLabel(content_frame, text=text, wraplength=450, justify="left", text_color="#dcddde").pack(anchor="w")
             
         # Tự động cuộn xuống dưới cùng
-        self.after(10, lambda: self.chat_scroll._parent_canvas.yview_moveto(1.0))
+        def scroll_to_bottom():
+            self.chat_scroll.update_idletasks()
+            self.chat_scroll._parent_canvas.yview_moveto(1.0)
+            
+        self.after(10, scroll_to_bottom)
+        self.after(100, scroll_to_bottom) # Double check for slow rendering
 
     def _get_chat_frame(self, target):
         """Lấy frame chat, nếu chưa có thì tạo mới VÀ load lịch sử"""
@@ -646,13 +651,30 @@ class ChatWindow(ctk.CTkFrame):
                 btn.configure(fg_color="#393c43" if is_active else "transparent")
         for name, frame in self.frames_store.items():
             frame.pack_forget()
+            
+        # Reset scroll về đầu trước khi đổi nội dung để tránh bị kẹt ở khoảng trắng phía dưới
+        self.chat_scroll._parent_canvas.yview_moveto(0.0)
+        
         # Đảm bảo load history tại thời điểm này
         frame = self._get_chat_frame(target)
         frame.pack(fill="both", expand=True)
         
-        # Focus vào input field để có thể nhắn trực tiếp (dùng after để không bị mất focus vào nút vừa bấm)
-        self.msg_entry.delete(0, "end")  # Xóa nội dung cũ nếu có
-        self.after(10, self.msg_entry.focus_set)
+        # Sau đó cuộn xuống dưới cùng (cần delay để UI cập nhật lại chiều cao)
+        def scroll_to_bottom():
+            self.chat_scroll.update_idletasks()
+            self.chat_scroll._parent_canvas.yview_moveto(1.0)
+            
+        self.after(50, scroll_to_bottom)
+        self.after(200, scroll_to_bottom)
+        
+        # Xóa nội dung cũ và Focus vào input field
+        self.msg_entry.delete(0, "end")
+        
+        def force_focus():
+            self.focus_set() # Clear focus from button
+            self.msg_entry.focus_force() # Force focus to entry
+            
+        self.after(100, force_focus)
 
     def toggle_right_sidebar(self):
         if self.right_sidebar.winfo_viewable():
