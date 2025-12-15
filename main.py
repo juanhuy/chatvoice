@@ -177,8 +177,10 @@ class MainApp(ctk.CTk):
             elif data.startswith(b"AUDIO_STREAM::"):
                 parts = data.split(b"::", 3)
                 if len(parts) == 4:
+                    sender = parts[1].decode()
+                    # receiver = parts[2].decode() # Không cần dùng
                     audio_data = parts[3]
-                    self.audio.play_stream_chunk(audio_data)
+                    self.audio.play_stream_chunk(audio_data, sender)
 
             # 9. Xử lý Group Call Started
             elif data.startswith(b"GROUP_CALL_STARTED::"):

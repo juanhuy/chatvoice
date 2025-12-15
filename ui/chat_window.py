@@ -471,6 +471,8 @@ class ChatWindow(ctk.CTkFrame):
         # Nếu đang xem tab này thì hiện ra
         if self.current_receiver == target_view: 
             frame.pack(fill="both", expand=True)
+            # Force update để đảm bảo UI vẽ lại
+            frame.update_idletasks()
 
         # Vẽ giao diện tin nhắn
         msg_container = ctk.CTkFrame(frame, fg_color="transparent")
