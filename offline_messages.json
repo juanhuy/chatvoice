@@ -138,5 +138,16 @@
             "time": 1765793833,
             "delivered": false
         }
+    ],
+    "chi": [
+        {
+            "id": "e0c5ce04-1d97-4fba-957a-27aeb81aca53",
+            "type": "TEXTMSG",
+            "sender": "phuoc",
+            "receiver": "chi",
+            "data": "123",
+            "time": 1765795101,
+            "delivered": false
+        }
     ]
 }

@@ -432,28 +432,34 @@ class ChatWindow(ctk.CTkFrame):
             json.dump(data, f, ensure_ascii=False, indent=4)
 
     def load_history(self, target):
-        """Đọc file JSON và hiện lại tin nhắn"""
-        filename = f"chat_logs/{self.username}_{target}.json"
-        if not os.path.exists(filename): return
+        """Đọc file JSON và hiện lại tin nhắn (Dùng Thread để không lag UI)"""
+        def _load_task():
+            filename = f"chat_logs/{self.username}_{target}.json"
+            if not os.path.exists(filename): return
+            
+            try:
+                with open(filename, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    
+                for msg in data:
+                    sender = msg.get("sender", "Unknown")
+                    content = msg.get("content", "")
+                    msg_type = msg.get("type", "text")
+                    is_voice = (msg_type == "voice")
+                    
+                    # Gọi display_msg với save=False và is_history=True
+                    # Dùng after để đẩy về main thread
+                    self.after(0, lambda s=sender, c=content, t=target, v=is_voice: 
+                               self.display_msg(s, c, t, v, save=False, is_history=True))
+                    
+            except Exception as e:
+                print(f"Lỗi load history: {e}")
         
-        try:
-            with open(filename, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                
-            for msg in data:
-                sender = msg.get("sender", "Unknown")
-                content = msg.get("content", "")
-                msg_type = msg.get("type", "text")
-                is_voice = (msg_type == "voice")
-                
-                # Gọi display_msg với save=False để KHÔNG lưu lại lần nữa
-                self.display_msg(sender, content, target, is_voice, save=False)
-                
-        except Exception as e:
-            print(f"Lỗi load history: {e}")
+        # Chạy trong thread riêng
+        threading.Thread(target=_load_task, daemon=True).start()
 
     # --- TÍNH NĂNG 2: DISPLAY MSG (CẬP NHẬT) ---
-    def display_msg(self, sender, text, to_tab, is_voice=False, save=True):
+    def display_msg(self, sender, text, to_tab, is_voice=False, save=True, is_history=False):
         """Hiển thị tin nhắn lên màn hình"""
         
         # Xác định Tab cần hiện - Phải xử lý cả tin nhắn riêng
@@ -473,7 +479,6 @@ class ChatWindow(ctk.CTkFrame):
 
         # Lấy frame chat (Nếu chưa có sẽ tự tạo và LOAD HISTORY)
         # QUAN TRỌNG: Phải lấy frame (và load history nếu cần) TRƯỚC KHI lưu tin mới
-        # Nếu không, load_history sẽ load luôn tin vừa lưu -> Double tin nhắn
         frame = self._get_chat_frame(target_view)
         
         # --- LƯU LOG (Chỉ lưu khi save=True) ---
@@ -484,10 +489,18 @@ class ChatWindow(ctk.CTkFrame):
         if self.current_receiver == target_view: 
             frame.pack(fill="both", expand=True)
             # Force update để đảm bảo UI vẽ lại
-            frame.update_idletasks()
+            # frame.update_idletasks() # Tạm tắt để tối ưu hiệu năng khi load nhiều tin
+
+        # Chọn parent frame (History hoặc Live)
+        if is_history and hasattr(frame, 'history_frame'):
+            parent = frame.history_frame
+        elif hasattr(frame, 'live_frame'):
+            parent = frame.live_frame
+        else:
+            parent = frame
 
         # Vẽ giao diện tin nhắn
-        msg_container = ctk.CTkFrame(frame, fg_color="transparent")
+        msg_container = ctk.CTkFrame(parent, fg_color="transparent")
         msg_container.pack(fill="x", pady=2, padx=5)
 
         avatar_color = ACCENT_COLOR if sender == self.username else "#faa61a"
@@ -524,6 +537,13 @@ class ChatWindow(ctk.CTkFrame):
         if target not in self.frames_store:
             frame = ctk.CTkFrame(self.chat_scroll, fg_color="transparent")
             self.frames_store[target] = frame
+            
+            # Tạo 2 khu vực: History (trên) và Live (dưới)
+            frame.history_frame = ctk.CTkFrame(frame, fg_color="transparent")
+            frame.history_frame.pack(fill="x", side="top")
+            
+            frame.live_frame = ctk.CTkFrame(frame, fg_color="transparent")
+            frame.live_frame.pack(fill="x", side="top")
             
             # --- LOAD LỊCH SỬ CHỈ KHI LẦN ĐẦU TẠO FRAME ---
             self.load_history(target) 
