@@ -1,7 +1,8 @@
 # config.py
 
 # Cấu hình Mạng
-HOST = '26.158.211.81'   # Server lắng nghe tất cả IP
+# HOST = '26.158.211.81'   # Server lắng nghe tất cả IP
+HOST = '192.168.88.183'   # Server lắng nghe tất cả IP
 PORT = 12345       # Cổng kết nối
 HEADER_SIZE = 10   # Độ dài header gói tin
 

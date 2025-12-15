@@ -652,7 +652,17 @@ class ChatWindow(ctk.CTkFrame):
         
         # Focus vào input field để có thể nhắn trực tiếp (dùng after để không bị mất focus vào nút vừa bấm)
         self.msg_entry.delete(0, "end")  # Xóa nội dung cũ nếu có
-        self.after(10, self.msg_entry.focus_set)
+        # self.after(10, self.msg_entry.focus_set)
+        # Cải tiến thêm:
+        # 1. Tăng thời gian chờ lên 100ms để đảm bảo UI vẽ xong hoàn toàn
+        # 2. Re-bind lại phím Enter để chắc chắn nó nhận lệnh gửi
+        def force_focus_logic():
+            self.msg_entry.focus()
+            self.msg_entry.focus_set() # Gọi cả 2 hàm để chắc chắn
+            # Gán lại phím Enter lần nữa cho chắc
+            self.msg_entry.bind("<Return>", self.send_text)    
+        self.after(100, force_focus_logic)
+    
 
     def toggle_right_sidebar(self):
         if self.right_sidebar.winfo_viewable():
