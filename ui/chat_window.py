@@ -205,6 +205,12 @@ class ChatWindow(ctk.CTkFrame):
     # --- CALL FEATURE ---
     def start_call(self):
         """Bắt đầu cuộc gọi"""
+        # --- EDGE CASE: Đang trong cuộc gọi khác thì không được gọi tiếp ---
+        if self.is_calling:
+            messagebox.showwarning("Call", "Bạn đang trong một cuộc gọi khác. Vui lòng kết thúc trước!")
+            return
+        # -----------------------------------------------------------------
+
         target = self.current_receiver
         if target == "ALL":
             messagebox.showwarning("Call", "Không thể gọi cho kênh chung!")
@@ -212,7 +218,7 @@ class ChatWindow(ctk.CTkFrame):
         
         # --- GROUP CALL LOGIC ---
         if target in self.joined_groups:
-            # Nếu đang trong cuộc gọi nhóm này rồi thì không làm gì
+            # Nếu đang trong cuộc gọi nhóm này rồi thì không làm gì (Check thừa nhưng an toàn)
             if self.is_calling and self.call_target == target:
                 return
             
@@ -354,6 +360,15 @@ class ChatWindow(ctk.CTkFrame):
 
     def handle_call_request(self, sender):
         """Xử lý khi có người gọi đến"""
+        # --- EDGE CASE: Nếu đang bận (đang call) thì tự động từ chối ---
+        if self.is_calling:
+            print(f"Auto-reject call from {sender} because user is busy.")
+            # Gửi từ chối ngầm
+            payload = f"CALL_REJECT::{self.username}::{sender}".encode('utf-8')
+            self.network.send(payload)
+            return
+        # ---------------------------------------------------------------
+
         ans = messagebox.askyesno("Cuộc gọi đến", f"{sender} đang gọi cho bạn. Chấp nhận?")
         if ans:
             self.is_calling = True
