@@ -472,6 +472,12 @@ def handle_client(conn, addr):
                 with lock:
                     if receiver in clients:
                         send_msg(clients[receiver], data)
+                    elif msg_type == "CALL_REQUEST":
+                        # Nếu người nhận Offline -> Báo lại cho người gọi
+                        # Gửi: CALL_OFFLINE::NguoiBiGoi::NguoiGoi
+                        # (Để client người gọi biết là NguoiBiGoi đang offline)
+                        payload = f"CALL_OFFLINE::{receiver}::{sender}".encode('utf-8')
+                        send_msg(conn, payload)
 
         except Exception as e:
             print(f"Lỗi client {username}: {e}")

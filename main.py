@@ -166,11 +166,11 @@ class MainApp(ctk.CTk):
                 sender = data.decode().split("::")[1]
                 self.chat_ui.after(0, lambda: self.chat_ui.handle_call_request(sender))
 
-            # 7. Xử lý Call Response (Accept/Reject/End)
-            elif any(data.startswith(prefix) for prefix in [b"CALL_ACCEPT::", b"CALL_REJECT::", b"CALL_END::"]):
+            # 7. Xử lý Call Response (Accept/Reject/End/Offline)
+            elif any(data.startswith(prefix) for prefix in [b"CALL_ACCEPT::", b"CALL_REJECT::", b"CALL_END::", b"CALL_OFFLINE::"]):
                 parts = data.decode().split("::")
                 msg_type = parts[0]
-                sender = parts[1]
+                sender = parts[1] # Trong trường hợp CALL_OFFLINE, sender ở đây chính là người bị gọi (đang offline)
                 self.chat_ui.after(0, lambda: self.chat_ui.handle_call_response(msg_type, sender))
 
             # 8. Xử lý Audio Stream

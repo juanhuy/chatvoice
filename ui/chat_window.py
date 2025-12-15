@@ -409,6 +409,10 @@ class ChatWindow(ctk.CTkFrame):
             self.end_call(notify=False) # Reset UI
             messagebox.showinfo("Call", f"Cuộc gọi với {sender} đã kết thúc.")
 
+        elif response_type == "CALL_OFFLINE":
+            self.end_call(notify=False) # Reset UI
+            messagebox.showwarning("Call", f"Người dùng {sender} hiện đang Offline.")
+
     def start_streaming_audio(self, target):
         """Bắt đầu gửi âm thanh"""
         self.call_target = target
