@@ -29,6 +29,7 @@ class ChatWindow(ctk.CTkFrame):
         self.current_receiver = "ALL"
         self.frames_store = {}
         self.online_users = [] 
+        self.all_users = [] # Danh sách tất cả user (để tính offline)
         self.joined_groups = [] 
         self.active_group_calls = [] # Danh sách các nhóm đang có cuộc gọi
         self.is_calling = False
@@ -41,6 +42,9 @@ class ChatWindow(ctk.CTkFrame):
 
         self.configure(fg_color=BG_PRIMARY)
         self.pack(fill="both", expand=True)
+        
+        # Lấy danh sách user ngay khi khởi tạo để hiển thị offline list
+        self.network.send(b"GET_ALL_USERS")
 
         # === LAYOUT CHÍNH ===
         self.grid_columnconfigure(0, weight=0, minsize=260)
@@ -86,6 +90,12 @@ class ChatWindow(ctk.CTkFrame):
         ctk.CTkLabel(self.channel_list, text="TIN NHẮN RIÊNG (ONLINE)", 
                      font=("gg sans", 11, "bold"), text_color=TIMESTAMP_COLOR, anchor="w").pack(fill="x", pady=(20, 5), padx=5)
         self.dm_container.pack(fill="x") 
+
+        # 4. Giao diện Offline (Mới)
+        ctk.CTkLabel(self.channel_list, text="OFFLINE", 
+                     font=("gg sans", 11, "bold"), text_color=TIMESTAMP_COLOR, anchor="w").pack(fill="x", pady=(20, 5), padx=5)
+        self.offline_container = ctk.CTkFrame(self.channel_list, fg_color="transparent")
+        self.offline_container.pack(fill="x")
 
         # 4. Voice Panel
         self.voice_panel = ctk.CTkFrame(self.sidebar, fg_color="#292b2f", height=55)
@@ -456,17 +466,19 @@ class ChatWindow(ctk.CTkFrame):
         else:  # Tin riêng từ mình gửi cho người khác
             target_view = to_tab
 
-        # --- LƯU LOG (Chỉ lưu khi save=True) ---
-        if save:
-            self.save_log(target_view, sender, text, "voice" if is_voice else "text")
-
         # Âm thanh thông báo
         if sender != self.username and save: 
             try: winsound.MessageBeep(winsound.MB_ICONASTERISK)
             except: pass
 
         # Lấy frame chat (Nếu chưa có sẽ tự tạo và LOAD HISTORY)
+        # QUAN TRỌNG: Phải lấy frame (và load history nếu cần) TRƯỚC KHI lưu tin mới
+        # Nếu không, load_history sẽ load luôn tin vừa lưu -> Double tin nhắn
         frame = self._get_chat_frame(target_view)
+        
+        # --- LƯU LOG (Chỉ lưu khi save=True) ---
+        if save:
+            self.save_log(target_view, sender, text, "voice" if is_voice else "text")
         
         # Nếu đang xem tab này thì hiện ra
         if self.current_receiver == target_view: 
@@ -696,13 +708,19 @@ class ChatWindow(ctk.CTkFrame):
         self.network.send(b"GET_ALL_USERS")
 
     def update_all_users_combo(self, users_str):
-        """Cập nhật danh sách user vào combobox thêm thành viên VÀ dialog tạo nhóm"""
+        """Cập nhật danh sách user vào combobox thêm thành viên VÀ dialog tạo nhóm VÀ danh sách offline"""
         
+        # 0. Cập nhật danh sách tổng
+        self.all_users = users_str.split(",") if users_str else []
+        
+        # Trigger update UI offline list
+        self.update_user_list(None) # None means keep current online_users, just re-render
+
         # 1. Cập nhật Dialog Tạo Nhóm (nếu đang mở)
         self.update_create_group_list(users_str)
 
         # 2. Cập nhật ComboBox Add Member (như cũ)
-        all_users = users_str.split(",") if users_str else []
+        all_users = self.all_users
         
         # Lấy danh sách thành viên hiện tại của nhóm (để loại trừ)
         current_members = getattr(self, "current_group_members", [])
@@ -825,13 +843,30 @@ class ChatWindow(ctk.CTkFrame):
             self.display_msg(self.username, f"📎 File: {name}", self.current_receiver)
 
     def update_user_list(self, users_str):
-        self.online_users = users_str.split(",") if users_str else []
+        if users_str is not None:
+            self.online_users = users_str.split(",") if users_str else []
+        
+        # 1. Render Online Users
         for widget in self.dm_container.winfo_children():
             widget.destroy()
         for u in self.online_users:
             if u and u != self.username:
                 btn = self.create_channel_btn(f"👤 {u}", u)
-                btn.pack(fill="x", pady=1) 
+                btn.pack(fill="x", pady=1)
+        
+        # 2. Render Offline Users
+        # Tính toán offline = All - Online
+        offline_users = [u for u in self.all_users if u not in self.online_users and u != self.username]
+        
+        for widget in self.offline_container.winfo_children():
+            widget.destroy()
+            
+        for u in offline_users:
+            # Nút offline thường mờ hơn hoặc có icon khác
+            btn = ctk.CTkButton(self.offline_container, text=f"zzz {u}", fg_color="transparent", 
+                                text_color="#72767d", hover_color="#393c43", anchor="w", height=35,
+                                command=lambda x=u: self.switch_chat(x))
+            btn.pack(fill="x", pady=1) 
 
     def on_group_created(self, group_name):
         self.add_group_to_list(group_name)
