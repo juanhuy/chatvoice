@@ -647,6 +647,10 @@ class ChatWindow(ctk.CTkFrame):
         # Đảm bảo load history tại thời điểm này
         frame = self._get_chat_frame(target)
         frame.pack(fill="both", expand=True)
+        
+        # Focus vào input field để có thể nhắn trực tiếp (dùng after để không bị mất focus vào nút vừa bấm)
+        self.msg_entry.delete(0, "end")  # Xóa nội dung cũ nếu có
+        self.after(10, self.msg_entry.focus_set)
 
     def toggle_right_sidebar(self):
         if self.right_sidebar.winfo_viewable():
