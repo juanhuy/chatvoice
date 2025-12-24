@@ -93,6 +93,13 @@ def broadcast_user_list():
         payload = f"USERLIST::{users}".encode('utf-8')
         for s in clients.values(): send_msg(s, payload)
 
+def broadcast_all_users():
+    with lock:
+        all_users = list(users_db.keys())
+        users_str = ",".join(all_users)
+        payload = f"ALL_USERS::{users_str}".encode('utf-8')
+        for s in clients.values(): send_msg(s, payload)
+
 def handle_client(conn, addr):
     print(f"[+] Kết nối từ {addr}")
     username = None
@@ -190,6 +197,9 @@ def handle_client(conn, addr):
                         save_users()
                     send_msg(conn, b"REGISTER_OK")
                     print(f"[+] Đăng ký mới: {reg_user}")
+                    
+                    # Broadcast danh sách user mới cho tất cả mọi người để cập nhật Offline List
+                    broadcast_all_users()
  
             # --- XỬ LÝ TẠO NHÓM ---
             elif msg_type == "GROUP_CREATE":
@@ -462,6 +472,12 @@ def handle_client(conn, addr):
                 with lock:
                     if receiver in clients:
                         send_msg(clients[receiver], data)
+                    elif msg_type == "CALL_REQUEST":
+                        # Nếu người nhận Offline -> Báo lại cho người gọi
+                        # Gửi: CALL_OFFLINE::NguoiBiGoi::NguoiGoi
+                        # (Để client người gọi biết là NguoiBiGoi đang offline)
+                        payload = f"CALL_OFFLINE::{receiver}::{sender}".encode('utf-8')
+                        send_msg(conn, payload)
 
         except Exception as e:
             print(f"Lỗi client {username}: {e}")

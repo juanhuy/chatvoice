@@ -29,6 +29,7 @@ class ChatWindow(ctk.CTkFrame):
         self.current_receiver = "ALL"
         self.frames_store = {}
         self.online_users = [] 
+        self.all_users = [] # Danh sách tất cả user (để tính offline)
         self.joined_groups = [] 
         self.active_group_calls = [] # Danh sách các nhóm đang có cuộc gọi
         self.is_calling = False
@@ -41,6 +42,9 @@ class ChatWindow(ctk.CTkFrame):
 
         self.configure(fg_color=BG_PRIMARY)
         self.pack(fill="both", expand=True)
+        
+        # Lấy danh sách user ngay khi khởi tạo để hiển thị offline list
+        self.network.send(b"GET_ALL_USERS")
 
         # === LAYOUT CHÍNH ===
         self.grid_columnconfigure(0, weight=0, minsize=260)
@@ -86,6 +90,12 @@ class ChatWindow(ctk.CTkFrame):
         ctk.CTkLabel(self.channel_list, text="TIN NHẮN RIÊNG (ONLINE)", 
                      font=("gg sans", 11, "bold"), text_color=TIMESTAMP_COLOR, anchor="w").pack(fill="x", pady=(20, 5), padx=5)
         self.dm_container.pack(fill="x") 
+
+        # 4. Giao diện Offline (Mới)
+        ctk.CTkLabel(self.channel_list, text="OFFLINE", 
+                     font=("gg sans", 11, "bold"), text_color=TIMESTAMP_COLOR, anchor="w").pack(fill="x", pady=(20, 5), padx=5)
+        self.offline_container = ctk.CTkFrame(self.channel_list, fg_color="transparent")
+        self.offline_container.pack(fill="x")
 
         # 4. Voice Panel
         self.voice_panel = ctk.CTkFrame(self.sidebar, fg_color="#292b2f", height=55)
@@ -195,6 +205,12 @@ class ChatWindow(ctk.CTkFrame):
     # --- CALL FEATURE ---
     def start_call(self):
         """Bắt đầu cuộc gọi"""
+        # --- EDGE CASE: Đang trong cuộc gọi khác thì không được gọi tiếp ---
+        if self.is_calling:
+            messagebox.showwarning("Call", "Bạn đang trong một cuộc gọi khác. Vui lòng kết thúc trước!")
+            return
+        # -----------------------------------------------------------------
+
         target = self.current_receiver
         if target == "ALL":
             messagebox.showwarning("Call", "Không thể gọi cho kênh chung!")
@@ -202,7 +218,7 @@ class ChatWindow(ctk.CTkFrame):
         
         # --- GROUP CALL LOGIC ---
         if target in self.joined_groups:
-            # Nếu đang trong cuộc gọi nhóm này rồi thì không làm gì
+            # Nếu đang trong cuộc gọi nhóm này rồi thì không làm gì (Check thừa nhưng an toàn)
             if self.is_calling and self.call_target == target:
                 return
             
@@ -344,6 +360,15 @@ class ChatWindow(ctk.CTkFrame):
 
     def handle_call_request(self, sender):
         """Xử lý khi có người gọi đến"""
+        # --- EDGE CASE: Nếu đang bận (đang call) thì tự động từ chối ---
+        if self.is_calling:
+            print(f"Auto-reject call from {sender} because user is busy.")
+            # Gửi từ chối ngầm
+            payload = f"CALL_REJECT::{self.username}::{sender}".encode('utf-8')
+            self.network.send(payload)
+            return
+        # ---------------------------------------------------------------
+
         ans = messagebox.askyesno("Cuộc gọi đến", f"{sender} đang gọi cho bạn. Chấp nhận?")
         if ans:
             self.is_calling = True
@@ -384,6 +409,10 @@ class ChatWindow(ctk.CTkFrame):
             self.end_call(notify=False) # Reset UI
             messagebox.showinfo("Call", f"Cuộc gọi với {sender} đã kết thúc.")
 
+        elif response_type == "CALL_OFFLINE":
+            self.end_call(notify=False) # Reset UI
+            messagebox.showwarning("Call", f"Người dùng {sender} hiện đang Offline.")
+
     def start_streaming_audio(self, target):
         """Bắt đầu gửi âm thanh"""
         self.call_target = target
@@ -422,28 +451,34 @@ class ChatWindow(ctk.CTkFrame):
             json.dump(data, f, ensure_ascii=False, indent=4)
 
     def load_history(self, target):
-        """Đọc file JSON và hiện lại tin nhắn"""
-        filename = f"chat_logs/{self.username}_{target}.json"
-        if not os.path.exists(filename): return
+        """Đọc file JSON và hiện lại tin nhắn (Dùng Thread để không lag UI)"""
+        def _load_task():
+            filename = f"chat_logs/{self.username}_{target}.json"
+            if not os.path.exists(filename): return
+            
+            try:
+                with open(filename, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    
+                for msg in data:
+                    sender = msg.get("sender", "Unknown")
+                    content = msg.get("content", "")
+                    msg_type = msg.get("type", "text")
+                    is_voice = (msg_type == "voice")
+                    
+                    # Gọi display_msg với save=False và is_history=True
+                    # Dùng after để đẩy về main thread
+                    self.after(0, lambda s=sender, c=content, t=target, v=is_voice: 
+                               self.display_msg(s, c, t, v, save=False, is_history=True))
+                    
+            except Exception as e:
+                print(f"Lỗi load history: {e}")
         
-        try:
-            with open(filename, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                
-            for msg in data:
-                sender = msg.get("sender", "Unknown")
-                content = msg.get("content", "")
-                msg_type = msg.get("type", "text")
-                is_voice = (msg_type == "voice")
-                
-                # Gọi display_msg với save=False để KHÔNG lưu lại lần nữa
-                self.display_msg(sender, content, target, is_voice, save=False)
-                
-        except Exception as e:
-            print(f"Lỗi load history: {e}")
+        # Chạy trong thread riêng
+        threading.Thread(target=_load_task, daemon=True).start()
 
     # --- TÍNH NĂNG 2: DISPLAY MSG (CẬP NHẬT) ---
-    def display_msg(self, sender, text, to_tab, is_voice=False, save=True):
+    def display_msg(self, sender, text, to_tab, is_voice=False, save=True, is_history=False):
         """Hiển thị tin nhắn lên màn hình"""
         
         # Xác định Tab cần hiện - Phải xử lý cả tin nhắn riêng
@@ -456,26 +491,35 @@ class ChatWindow(ctk.CTkFrame):
         else:  # Tin riêng từ mình gửi cho người khác
             target_view = to_tab
 
-        # --- LƯU LOG (Chỉ lưu khi save=True) ---
-        if save:
-            self.save_log(target_view, sender, text, "voice" if is_voice else "text")
-
         # Âm thanh thông báo
         if sender != self.username and save: 
             try: winsound.MessageBeep(winsound.MB_ICONASTERISK)
             except: pass
 
         # Lấy frame chat (Nếu chưa có sẽ tự tạo và LOAD HISTORY)
+        # QUAN TRỌNG: Phải lấy frame (và load history nếu cần) TRƯỚC KHI lưu tin mới
         frame = self._get_chat_frame(target_view)
+        
+        # --- LƯU LOG (Chỉ lưu khi save=True) ---
+        if save:
+            self.save_log(target_view, sender, text, "voice" if is_voice else "text")
         
         # Nếu đang xem tab này thì hiện ra
         if self.current_receiver == target_view: 
             frame.pack(fill="both", expand=True)
             # Force update để đảm bảo UI vẽ lại
-            frame.update_idletasks()
+            # frame.update_idletasks() # Tạm tắt để tối ưu hiệu năng khi load nhiều tin
+
+        # Chọn parent frame (History hoặc Live)
+        if is_history and hasattr(frame, 'history_frame'):
+            parent = frame.history_frame
+        elif hasattr(frame, 'live_frame'):
+            parent = frame.live_frame
+        else:
+            parent = frame
 
         # Vẽ giao diện tin nhắn
-        msg_container = ctk.CTkFrame(frame, fg_color="transparent")
+        msg_container = ctk.CTkFrame(parent, fg_color="transparent")
         msg_container.pack(fill="x", pady=2, padx=5)
 
         avatar_color = ACCENT_COLOR if sender == self.username else "#faa61a"
@@ -500,13 +544,25 @@ class ChatWindow(ctk.CTkFrame):
             ctk.CTkLabel(content_frame, text=text, wraplength=450, justify="left", text_color="#dcddde").pack(anchor="w")
             
         # Tự động cuộn xuống dưới cùng
-        self.after(10, lambda: self.chat_scroll._parent_canvas.yview_moveto(1.0))
+        def scroll_to_bottom():
+            self.chat_scroll.update_idletasks()
+            self.chat_scroll._parent_canvas.yview_moveto(1.0)
+            
+        self.after(10, scroll_to_bottom)
+        self.after(100, scroll_to_bottom) # Double check for slow rendering
 
     def _get_chat_frame(self, target):
         """Lấy frame chat, nếu chưa có thì tạo mới VÀ load lịch sử"""
         if target not in self.frames_store:
             frame = ctk.CTkFrame(self.chat_scroll, fg_color="transparent")
             self.frames_store[target] = frame
+            
+            # Tạo 2 khu vực: History (trên) và Live (dưới)
+            frame.history_frame = ctk.CTkFrame(frame, fg_color="transparent")
+            frame.history_frame.pack(fill="x", side="top")
+            
+            frame.live_frame = ctk.CTkFrame(frame, fg_color="transparent")
+            frame.live_frame.pack(fill="x", side="top")
             
             # --- LOAD LỊCH SỬ CHỈ KHI LẦN ĐẦU TẠO FRAME ---
             self.load_history(target) 
@@ -619,24 +675,30 @@ class ChatWindow(ctk.CTkFrame):
         self.lbl_header_title.configure(text=f"{icon} {target}")
         self.msg_entry.configure(placeholder_text=f"Gửi đến {target}")
         
-        # Cập nhật trạng thái nút Call
-        if self.is_calling and self.call_target == target:
-            self.btn_call.configure(text="📞 Leave" if target in self.joined_groups else "📞 End", 
-                                    fg_color=RED_COLOR, 
-                                    command=self.leave_group_call if target in self.joined_groups else self.end_call)
-        elif target in self.active_group_calls:
-             self.btn_call.configure(text="📞 Join Call", fg_color=GREEN_COLOR, command=self.start_call)
-        else:
-            self.btn_call.configure(text="📞 Call", fg_color=GREEN_COLOR, command=self.start_call)
+        # Reset các nút trên header
+        self.btn_call.pack_forget()
+        self.btn_info.pack_forget()
 
-        # Ẩn/Hiện nút Info (Chỉ hiện cho Group)
+        # 1. Nút Call (Hiện cho tất cả trừ ALL)
+        if target != "ALL":
+            self.btn_call.pack(side="left", padx=5)
+            
+            if self.is_calling and self.call_target == target:
+                self.btn_call.configure(text="📞 Leave" if target in self.joined_groups else "📞 End", 
+                                        fg_color=RED_COLOR, 
+                                        command=self.leave_group_call if target in self.joined_groups else self.end_call)
+            elif target in self.active_group_calls:
+                 self.btn_call.configure(text="📞 Join Call", fg_color=GREEN_COLOR, command=self.start_call)
+            else:
+                self.btn_call.configure(text="📞 Call", fg_color=GREEN_COLOR, command=self.start_call)
+
+        # 2. Nút Info (Chỉ hiện cho Group)
         if target in self.joined_groups:
             self.btn_info.pack(side="left", padx=5)
             # Nếu sidebar đang mở thì cập nhật nội dung
             if self.right_sidebar.winfo_viewable():
                 self.update_group_info(target)
         else:
-            self.btn_info.pack_forget()
             self.right_sidebar.grid_forget() # Ẩn sidebar nếu không phải group
 
         self.btn_general.configure(fg_color="#393c43" if target == "ALL" else "transparent")
@@ -646,13 +708,30 @@ class ChatWindow(ctk.CTkFrame):
                 btn.configure(fg_color="#393c43" if is_active else "transparent")
         for name, frame in self.frames_store.items():
             frame.pack_forget()
+            
+        # Reset scroll về đầu trước khi đổi nội dung để tránh bị kẹt ở khoảng trắng phía dưới
+        self.chat_scroll._parent_canvas.yview_moveto(0.0)
+        
         # Đảm bảo load history tại thời điểm này
         frame = self._get_chat_frame(target)
         frame.pack(fill="both", expand=True)
         
-        # Focus vào input field để có thể nhắn trực tiếp (dùng after để không bị mất focus vào nút vừa bấm)
-        self.msg_entry.delete(0, "end")  # Xóa nội dung cũ nếu có
-        self.after(10, self.msg_entry.focus_set)
+        # Sau đó cuộn xuống dưới cùng (cần delay để UI cập nhật lại chiều cao)
+        def scroll_to_bottom():
+            self.chat_scroll.update_idletasks()
+            self.chat_scroll._parent_canvas.yview_moveto(1.0)
+            
+        self.after(50, scroll_to_bottom)
+        self.after(200, scroll_to_bottom)
+        
+        # Xóa nội dung cũ và Focus vào input field
+        self.msg_entry.delete(0, "end")
+        
+        def force_focus():
+            self.focus_set() # Clear focus from button
+            self.msg_entry.focus_force() # Force focus to entry
+            
+        self.after(100, force_focus)
 
     def toggle_right_sidebar(self):
         if self.right_sidebar.winfo_viewable():
@@ -668,13 +747,19 @@ class ChatWindow(ctk.CTkFrame):
         self.network.send(b"GET_ALL_USERS")
 
     def update_all_users_combo(self, users_str):
-        """Cập nhật danh sách user vào combobox thêm thành viên VÀ dialog tạo nhóm"""
+        """Cập nhật danh sách user vào combobox thêm thành viên VÀ dialog tạo nhóm VÀ danh sách offline"""
         
+        # 0. Cập nhật danh sách tổng
+        self.all_users = users_str.split(",") if users_str else []
+        
+        # Trigger update UI offline list
+        self.update_user_list(None) # None means keep current online_users, just re-render
+
         # 1. Cập nhật Dialog Tạo Nhóm (nếu đang mở)
         self.update_create_group_list(users_str)
 
         # 2. Cập nhật ComboBox Add Member (như cũ)
-        all_users = users_str.split(",") if users_str else []
+        all_users = self.all_users
         
         # Lấy danh sách thành viên hiện tại của nhóm (để loại trừ)
         current_members = getattr(self, "current_group_members", [])
@@ -797,13 +882,30 @@ class ChatWindow(ctk.CTkFrame):
             self.display_msg(self.username, f"📎 File: {name}", self.current_receiver)
 
     def update_user_list(self, users_str):
-        self.online_users = users_str.split(",") if users_str else []
+        if users_str is not None:
+            self.online_users = users_str.split(",") if users_str else []
+        
+        # 1. Render Online Users
         for widget in self.dm_container.winfo_children():
             widget.destroy()
         for u in self.online_users:
             if u and u != self.username:
                 btn = self.create_channel_btn(f"👤 {u}", u)
-                btn.pack(fill="x", pady=1) 
+                btn.pack(fill="x", pady=1)
+        
+        # 2. Render Offline Users
+        # Tính toán offline = All - Online
+        offline_users = [u for u in self.all_users if u not in self.online_users and u != self.username]
+        
+        for widget in self.offline_container.winfo_children():
+            widget.destroy()
+            
+        for u in offline_users:
+            # Nút offline thường mờ hơn hoặc có icon khác
+            btn = ctk.CTkButton(self.offline_container, text=f"zzz {u}", fg_color="transparent", 
+                                text_color="#72767d", hover_color="#393c43", anchor="w", height=35,
+                                command=lambda x=u: self.switch_chat(x))
+            btn.pack(fill="x", pady=1) 
 
     def on_group_created(self, group_name):
         self.add_group_to_list(group_name)

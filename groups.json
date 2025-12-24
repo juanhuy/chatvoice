@@ -23,5 +23,13 @@
             "phuoc"
         ],
         "admin": "phuoc"
+    },
+    "testtestest": {
+        "members": [
+            "khanh",
+            "chi",
+            "phuoc"
+        ],
+        "admin": "phuoc"
     }
 }
